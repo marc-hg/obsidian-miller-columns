@@ -29,5 +29,5 @@ The project follows a decoupled MVC-lite structure for high testability:
 3. Enable the plugin in Obsidian settings.
 4. Add `#miller-view` to the top-level item of any markdown list.
 
-## ⚖️ License
+## License
 MIT License - Copyright (c) 2026 marc-hg

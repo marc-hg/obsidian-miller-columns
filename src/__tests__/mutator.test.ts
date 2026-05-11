@@ -14,4 +14,10 @@ describe('Markdown Mutator', () => {
         const output = toggleCheckboxInText(input, 0);
         expect(output).toBe('- [ ] Completed');
     });
+
+    it('should return same text when no textbox', () => {
+        const input = `Just a simple line`;
+        const output = toggleCheckboxInText(input, 0);
+        expect(output).toBe('Just a simple line');
+    });
 });
