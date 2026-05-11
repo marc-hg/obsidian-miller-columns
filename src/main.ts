@@ -1,99 +1,146 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import { Plugin, MarkdownPostProcessorContext, MarkdownView } from 'obsidian';
 
-// Remember to rename these classes and interfaces!
+// 1. Define our Data Structure
+export interface MillerNode {
+	id: string;
+	text: string;
+	isCompleted: boolean;
+	originalLine: number; // Crucial for bidirectional editing later
+	children: MillerNode[];
+}
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+// 2. The Stack-Based Parser
+function parseListToTree(rawMarkdown: string, startLine: number): MillerNode[] {
+	const lines = rawMarkdown.split('\n');
+	const rootNodes: MillerNode[] = [];
+	const stack: { node: MillerNode, indent: number }[] = [];
 
-	async onload() {
-		await this.loadSettings();
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		// Regex to extract: 1. Indentation, 2. Checkbox state, 3. Text
+		const match = line.match(/^(\s*)-\s*\[([ xX])\]\s*(.*)/);
+		if (!match) continue;
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
+		const indent = match[1].length;
+		const isCompleted = match[2].toLowerCase() === 'x';
+		let text = match[3];
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
+		// Clean up the trigger tag from the display text
+		text = text.replace('#miller-view', '').trim();
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+		const node: MillerNode = {
+			id: crypto.randomUUID(),
+			text,
+			isCompleted,
+			originalLine: startLine + i,
+			children: []
+		};
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
+		// Pop items off the stack until we find the parent (an item with strictly less indentation)
+		while (stack.length > 0 && stack[stack.length - 1].indent >= indent) {
+			stack.pop();
+		}
+
+		if (stack.length === 0) {
+			rootNodes.push(node); // It's a top-level task
+		} else {
+			stack[stack.length - 1].node.children.push(node); // It's a sub-task
+		}
+
+		stack.push({ node, indent });
+	}
+
+	return rootNodes;
+}
+
+// 3. Reactive UI Renderer
+function renderMillerUI(container: HTMLElement, rootNodes: MillerNode[]) {
+	// Clear the container and apply a wrapper class for styling
+	container.empty();
+	container.addClass('miller-columns-wrapper');
+
+	// STATE: Track the currently selected path of nodes
+	let activePath: MillerNode[] = [];
+
+	// Render loop: Clears and redraws the UI based on the activePath state
+	const render = () => {
+		container.empty();
+		
+		let currentNodes = rootNodes;
+		let depth = 0;
+
+		// Continue rendering columns as long as we have nodes to display at this depth
+		while (currentNodes && currentNodes.length > 0) {
+			const colEl = container.createDiv({ cls: 'miller-column' });
+			const currentDepth = depth; // Capture depth for the event listener closure
+			let nextNodes: MillerNode[] | null = null;
+
+			currentNodes.forEach(node => {
+				const itemEl = colEl.createDiv({ cls: 'miller-item' });
+				
+				// Add checkbox (Read-only for this MVP step)
+				const checkbox = itemEl.createEl('input', { type: 'checkbox' });
+				checkbox.checked = node.isCompleted;
+				checkbox.disabled = true; 
+
+				// Add text
+				itemEl.createSpan({ text: node.text });
+
+				// Check if this node is part of the currently active path
+				const isActive = activePath[currentDepth] === node;
+				if (isActive) {
+					itemEl.addClass('is-active');
+					nextNodes = node.children; // Queue up children for the next column
 				}
-				return false;
-			}
-		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+				// Interaction Logic
+				itemEl.onClickEvent((e) => {
+					// 1. Truncate the path to the current depth (deselects deeper children)
+					activePath = activePath.slice(0, currentDepth);
+					// 2. Add the newly clicked node
+					activePath.push(node);
+					// 3. Trigger a re-render
+					render();
+				});
+			});
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
-		});
+			// Move to the next set of children for the next column iteration
+			currentNodes = nextNodes || [];
+			depth++;
+		}
+	};
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-
-	}
-
-	onunload() {
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
+	// Trigger initial render
+	render();
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
+export default class MillerColumnsPlugin extends Plugin {
+	async onload() {
+		this.registerMarkdownPostProcessor((element: HTMLElement, context: MarkdownPostProcessorContext) => {
+			if (!element.innerText.includes('#miller-view')) return; 
+
+			const sectionInfo = context.getSectionInfo(element);
+			if (!sectionInfo) return;
+
+			const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+			if (!view) return;
+			
+			const fileContent = view.editor.getDoc().getValue();
+			const lines = fileContent.split('\n');
+			const rawMarkdown = lines.slice(sectionInfo.lineStart, sectionInfo.lineEnd + 1).join('\n');
+
+			element.empty();
+
+			// Replace the temporary border styles with our wrapper class
+			const container = element.createDiv();
+			
+			const tree = parseListToTree(rawMarkdown, sectionInfo.lineStart);
+			
+			// --- NEW EXECUTION ---
+			renderMillerUI(container, tree);
+		});
 	}
 
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
+	onunload() {}
 }
+

@@ -6,3 +6,56 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+/* Container holding all columns */
+.miller-columns-wrapper {
+    display: flex;
+    overflow-x: auto;
+    gap: 15px;
+    padding: 10px 0;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    background-color: var(--background-primary);
+}
+
+/* Individual vertical column */
+.miller-column {
+    min-width: 220px;
+    border-right: 1px solid var(--background-modifier-border);
+    padding: 0 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Remove border from the last column */
+.miller-column:last-child {
+    border-right: none;
+}
+
+/* Individual task item */
+.miller-item {
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-normal);
+    transition: background-color 0.1s ease-in-out;
+}
+
+.miller-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+
+/* Selected task state */
+.miller-item.is-active {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-weight: 600;
+}
+
+/* Fix checkbox color when row is active */
+.miller-item.is-active input[type="checkbox"] {
+    border-color: var(--text-on-accent);
+}
