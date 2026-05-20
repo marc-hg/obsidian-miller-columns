@@ -1,15 +1,29 @@
 // renderer.ts
 import { MillerNode } from '../model/types';
 
+function restorePath(rootNodes: MillerNode[], savedLines: number[]): MillerNode[] {
+	const path: MillerNode[] = [];
+	let currentNodes = rootNodes;
+	for (const targetLine of savedLines) {
+		const node = currentNodes.find(n => n.originalLine === targetLine);
+		if (!node) break;
+		path.push(node);
+		currentNodes = node.children;
+	}
+	return path;
+}
+
 export function renderMillerUI(
 	container: HTMLElement,
 	rootNodes: MillerNode[],
-	onToggle: (node: MillerNode) => void
+	savedActivePath: number[],
+	onToggle: (node: MillerNode) => void,
+	onPathChange: (path: number[]) => void
 ) {
 	container.empty();
 	container.addClass('miller-columns-wrapper');
 
-	let activePath: MillerNode[] = [];
+	let activePath: MillerNode[] = restorePath(rootNodes, savedActivePath);
 
 	const render = () => {
 		container.empty();
@@ -28,9 +42,9 @@ export function renderMillerUI(
 				const checkbox = itemEl.createEl('input', { type: 'checkbox' });
 				checkbox.checked = node.isCompleted;
 				checkbox.addEventListener('click', (e) => {
-					e.stopPropagation(); // Don't trigger "select column logic"
+					e.stopPropagation();
 					onToggle(node);
-				})
+				});
 
 				itemEl.createSpan({ text: node.text });
 
@@ -40,9 +54,10 @@ export function renderMillerUI(
 					nextNodes = node.children;
 				}
 
-				itemEl.onClickEvent((e) => {
+				itemEl.onClickEvent(() => {
 					activePath = activePath.slice(0, currentDepth);
 					activePath.push(node);
+					onPathChange(activePath.map(n => n.originalLine));
 					render();
 				});
 			});

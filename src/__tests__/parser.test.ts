@@ -8,15 +8,25 @@ describe('Miller Column Parser', () => {
         const tree = parseListToTree(markdown, 0);
 
         expect(tree.length).toBe(1);
-        expect(tree[0].text).toBe('Parent');
-        expect(tree[0].children.length).toBe(1);
-        expect(tree[0].children[0].text).toBe('Child');
+        expect(tree[0]!.text).toBe('Parent');
+        expect(tree[0]!.children.length).toBe(1);
+        expect(tree[0]!.children[0]!.text).toBe('Child');
     });
 
     it('should ignore the #miller-view tag in display text', () => {
         const markdown = `- [ ] Task #miller-view`;
         const tree = parseListToTree(markdown, 0);
-        
-        expect(tree[0].text).toBe('Task');
+
+        expect(tree[0]!.text).toBe('Task');
+    });
+
+    it('should map originalLine relative to startLine offset', () => {
+        const markdown = `- [ ] First\n- [ ] Second\n  - [ ] Nested`;
+        const startLine = 5;
+        const tree = parseListToTree(markdown, startLine);
+
+        expect(tree[0]!.originalLine).toBe(5);
+        expect(tree[1]!.originalLine).toBe(6);
+        expect(tree[1]!.children[0]!.originalLine).toBe(7);
     });
 });
