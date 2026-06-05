@@ -155,8 +155,7 @@ export function renderMillerUI(
 		render();
 
 		const cols = container.querySelectorAll<HTMLElement>('.miller-column');
-		const colEl = cols[targetDepth];
-		if (!colEl) return;
+		const colEl = cols[targetDepth] ?? container.createDiv({ cls: 'miller-column' });
 
 		const inputEl = document.createElement('input');
 		inputEl.type = 'text';
@@ -193,6 +192,11 @@ export function renderMillerUI(
 		e.preventDefault();
 		e.stopPropagation();
 
+		if (key === 'Enter') {
+			handleInsert(e.shiftKey);
+			return;
+		}
+
 		let guardFired = false;
 		if (activePath.length === 0 && rootNodes.length > 0) {
 			const first = rootNodes[0];
@@ -221,9 +225,6 @@ export function renderMillerUI(
 		} else if (key === ' ') {
 			const focused = activePath[activePath.length - 1];
 			if (focused) onToggle(focused);
-			return;
-		} else if (key === 'Enter') {
-			handleInsert(e.shiftKey);
 			return;
 		}
 

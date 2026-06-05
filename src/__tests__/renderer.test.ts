@@ -558,6 +558,174 @@ describe('keyboard navigation — onPathChange fires on mutation', () => {
     });
 });
 
+describe('item creation — Enter/Shift+Enter inline input', () => {
+    function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
+        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+    }
+
+    function hover(container: HTMLElement): void {
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+    }
+
+    function pressKey(k: string, shift = false): void {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: k, shiftKey: shift, bubbles: true, cancelable: true }));
+    }
+
+    it('[tracer] Enter with leaf selected shows inline input in same column', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const leaf = makeNode('Leaf', [], 1);
+        renderMillerUI(container, [leaf], [1], noop, noop, noop);
+
+        hover(container);
+        pressKey('Enter');
+
+        expect(container.querySelector('input.miller-new-item-input')).not.toBeNull();
+        document.body.removeChild(container);
+    });
+
+    it('[tracer] Shift+Enter with leaf selected shows inline input in new child column', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const leaf = makeNode('Leaf', [], 1);
+        renderMillerUI(container, [leaf], [1], noop, noop, noop);
+
+        hover(container);
+        pressKey('Enter', true);
+
+        expect(container.querySelector('input.miller-new-item-input')).not.toBeNull();
+        document.body.removeChild(container);
+    });
+
+    it('Enter with node-with-children selected shows input after subtree in same column', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const child = makeNode('Child', [], 2);
+        const parent = makeNode('Parent', [child], 1);
+        renderMillerUI(container, [parent], [1], noop, noop, noop);
+
+        hover(container);
+        pressKey('Enter');
+
+        expect(container.querySelector('input.miller-new-item-input')).not.toBeNull();
+        document.body.removeChild(container);
+    });
+
+    it('Shift+Enter with node-with-children selected shows input in child column', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const child = makeNode('Child', [], 2);
+        const parent = makeNode('Parent', [child], 1);
+        renderMillerUI(container, [parent], [1], noop, noop, noop);
+
+        hover(container);
+        pressKey('Enter', true);
+
+        expect(container.querySelector('input.miller-new-item-input')).not.toBeNull();
+        document.body.removeChild(container);
+    });
+
+    it('Enter with no selection appends input at root column end', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], 1)], [], noop, noop, noop);
+
+        hover(container);
+        pressKey('Enter');
+
+        expect(container.querySelector('input.miller-new-item-input')).not.toBeNull();
+        document.body.removeChild(container);
+    });
+
+    it('Shift+Enter with no selection is no-op (no input appears)', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], 1)], [], noop, noop, noop);
+
+        hover(container);
+        pressKey('Enter', true);
+
+        expect(container.querySelector('input.miller-new-item-input')).toBeNull();
+        document.body.removeChild(container);
+    });
+
+    it('confirming non-empty text calls onInsert with correct afterLine and indent', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const leaf = makeNode('Leaf', [], 5);
+        const onInsert = vi.fn();
+        renderMillerUI(container, [leaf], [5], noop, noop, onInsert);
+
+        hover(container);
+        pressKey('Enter');
+
+        const input = container.querySelector('input.miller-new-item-input') as HTMLInputElement;
+        input.value = 'new item';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        expect(onInsert).toHaveBeenCalledOnce();
+        expect(onInsert).toHaveBeenCalledWith('new item', 5, '');
+        document.body.removeChild(container);
+    });
+
+    it('confirming empty text does not call onInsert', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const leaf = makeNode('Leaf', [], 5);
+        const onInsert = vi.fn();
+        renderMillerUI(container, [leaf], [5], noop, noop, onInsert);
+
+        hover(container);
+        pressKey('Enter');
+
+        const input = container.querySelector('input.miller-new-item-input') as HTMLInputElement;
+        input.value = '';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        expect(onInsert).not.toHaveBeenCalled();
+        document.body.removeChild(container);
+    });
+
+    it('Escape removes input without calling onInsert', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const leaf = makeNode('Leaf', [], 5);
+        const onInsert = vi.fn();
+        renderMillerUI(container, [leaf], [5], noop, noop, onInsert);
+
+        hover(container);
+        pressKey('Enter');
+
+        const input = container.querySelector('input.miller-new-item-input') as HTMLInputElement;
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+        expect(container.querySelector('input.miller-new-item-input')).toBeNull();
+        expect(onInsert).not.toHaveBeenCalled();
+        document.body.removeChild(container);
+    });
+
+    it('onPathChange primed with new item line before onInsert fires', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const leaf = makeNode('Leaf', [], 5);
+        const calls: string[] = [];
+        const onPathChange = vi.fn(() => calls.push('path'));
+        const onInsert = vi.fn(() => calls.push('insert'));
+        renderMillerUI(container, [leaf], [5], noop, onPathChange, onInsert);
+
+        hover(container);
+        pressKey('Enter');
+
+        const input = container.querySelector('input.miller-new-item-input') as HTMLInputElement;
+        input.value = 'x';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        expect(calls[calls.length - 2]).toBe('path');
+        expect(calls[calls.length - 1]).toBe('insert');
+        document.body.removeChild(container);
+    });
+});
+
 describe('space-toggles-focused-item (Phase 2 acceptance)', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
         return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
