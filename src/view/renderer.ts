@@ -122,7 +122,7 @@ export function renderMillerUI(
 
 	const keyHandler = (e: KeyboardEvent): void => {
 		const { key } = e;
-		if (key !== 'ArrowUp' && key !== 'ArrowDown' && key !== 'ArrowLeft' && key !== 'ArrowRight') return;
+		if (key !== 'ArrowUp' && key !== 'ArrowDown' && key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== ' ') return;
 
 		e.preventDefault();
 		e.stopPropagation();
@@ -152,6 +152,10 @@ export function renderMillerUI(
 			newPath = navigateDescend(rootNodes, activePath);
 		} else if (key === 'ArrowLeft' && activePath.length > 1) {
 			newPath = navigateAscend(activePath);
+		} else if (key === ' ') {
+			const focused = activePath[activePath.length - 1];
+			if (focused) onToggle(focused);
+			return;
 		}
 
 		if (newPath === activePath && !guardFired) return;

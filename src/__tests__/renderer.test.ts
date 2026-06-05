@@ -376,3 +376,207 @@ describe('hover-gates-arrow-navigation (Phase 1 acceptance)', () => {
         document.body.removeChild(container);
     });
 });
+
+describe('keyboard navigation — Space toggle', () => {
+    function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
+        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+    }
+
+    function hover(container: HTMLElement): void {
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+    }
+
+    it('[tracer] hovered + node selected + Space → onToggle called, defaultPrevented', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const node = makeNode('A', [], 1);
+        const onToggle = vi.fn();
+        renderMillerUI(container, [node], [1], onToggle, noop);
+
+        hover(container);
+        const e = new KeyboardEvent('keydown', { key: ' ', cancelable: true, bubbles: true });
+        document.dispatchEvent(e);
+
+        expect(onToggle).toHaveBeenCalledOnce();
+        expect(onToggle).toHaveBeenCalledWith(node);
+        expect(e.defaultPrevented).toBe(true);
+        document.body.removeChild(container);
+    });
+
+    it('hovered + empty activePath + Space → guard fires, onToggle called with root[0]', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const node = makeNode('A', [], 1);
+        const onToggle = vi.fn();
+        renderMillerUI(container, [node], [], onToggle, noop);
+
+        hover(container);
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+
+        expect(onToggle).toHaveBeenCalledOnce();
+        expect(onToggle).toHaveBeenCalledWith(node);
+        document.body.removeChild(container);
+    });
+
+    it('not hovered + Space → onToggle not called', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const onToggle = vi.fn();
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], onToggle, noop);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+
+        expect(onToggle).not.toHaveBeenCalled();
+        document.body.removeChild(container);
+    });
+});
+
+describe('keyboard navigation — preventDefault on all intercepted keys', () => {
+    function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
+        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+    }
+
+    function setup(): HTMLElement {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, noop);
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        return container;
+    }
+
+    function dispatchCancelable(k: string): KeyboardEvent {
+        const e = new KeyboardEvent('keydown', { key: k, cancelable: true, bubbles: true });
+        document.dispatchEvent(e);
+        return e;
+    }
+
+    it('[tracer] ArrowDown → defaultPrevented', () => {
+        const container = setup();
+        expect(dispatchCancelable('ArrowDown').defaultPrevented).toBe(true);
+        document.body.removeChild(container);
+    });
+
+    it('ArrowUp → defaultPrevented', () => {
+        const container = setup();
+        expect(dispatchCancelable('ArrowUp').defaultPrevented).toBe(true);
+        document.body.removeChild(container);
+    });
+
+    it('ArrowRight → defaultPrevented', () => {
+        const container = setup();
+        expect(dispatchCancelable('ArrowRight').defaultPrevented).toBe(true);
+        document.body.removeChild(container);
+    });
+
+    it('ArrowLeft → defaultPrevented', () => {
+        const container = setup();
+        expect(dispatchCancelable('ArrowLeft').defaultPrevented).toBe(true);
+        document.body.removeChild(container);
+    });
+});
+
+describe('keyboard navigation — onPathChange fires on mutation', () => {
+    function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
+        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+    }
+
+    function hover(container: HTMLElement): void {
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+    }
+
+    function key(k: string): void {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+    }
+
+    it('[tracer] ArrowDown moves A→B → onPathChange called with [B.originalLine]', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const onPathChange = vi.fn();
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, onPathChange);
+
+        hover(container);
+        key('ArrowDown');
+
+        expect(onPathChange).toHaveBeenCalledWith([2]);
+        document.body.removeChild(container);
+    });
+
+    it('ArrowRight descends → onPathChange called with [parent, child] lines', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const onPathChange = vi.fn();
+        const child = makeNode('Child', [], 2);
+        const parent = makeNode('Parent', [child], 1);
+        renderMillerUI(container, [parent], [1], noop, onPathChange);
+
+        hover(container);
+        key('ArrowRight');
+
+        expect(onPathChange).toHaveBeenCalledWith([1, 2]);
+        document.body.removeChild(container);
+    });
+
+    it('ArrowLeft ascends → onPathChange called with [parent.originalLine]', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const onPathChange = vi.fn();
+        const child = makeNode('Child', [], 2);
+        const parent = makeNode('Parent', [child], 1);
+        renderMillerUI(container, [parent], [1, 2], noop, onPathChange);
+
+        hover(container);
+        key('ArrowLeft');
+
+        expect(onPathChange).toHaveBeenCalledWith([1]);
+        document.body.removeChild(container);
+    });
+
+    it('ArrowRight on leaf (no-op) → onPathChange not called', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const onPathChange = vi.fn();
+        renderMillerUI(container, [makeNode('Leaf', [], 1)], [1], noop, onPathChange);
+
+        hover(container);
+        key('ArrowRight');
+
+        expect(onPathChange).not.toHaveBeenCalled();
+        document.body.removeChild(container);
+    });
+
+    it('ArrowLeft at root (no-op) → onPathChange not called', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const onPathChange = vi.fn();
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, onPathChange);
+
+        hover(container);
+        key('ArrowLeft');
+
+        expect(onPathChange).not.toHaveBeenCalled();
+        document.body.removeChild(container);
+    });
+});
+
+describe('space-toggles-focused-item (Phase 2 acceptance)', () => {
+    function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
+        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+    }
+
+    it('Space on hovered+selected item calls onToggle and prevents default', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const node = makeNode('A', [], 1);
+        const onToggle = vi.fn();
+        renderMillerUI(container, [node], [1], onToggle, noop);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        const e = new KeyboardEvent('keydown', { key: ' ', cancelable: true, bubbles: true });
+        document.dispatchEvent(e);
+
+        expect(onToggle).toHaveBeenCalledOnce();
+        expect(onToggle).toHaveBeenCalledWith(node);
+        expect(e.defaultPrevented).toBe(true);
+        document.body.removeChild(container);
+    });
+});
