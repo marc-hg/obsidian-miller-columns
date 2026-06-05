@@ -48,23 +48,23 @@ dispatching before `mouseenter` or after `mouseleave` has no effect.
 
 ### Phase 1 Tasks
 
-1. [ ] Remove prototype activation; wire hover gate
+1. [x] Remove prototype activation; wire hover gate
 
    - Boundary: `renderer.ts: renderMillerUI(container, rootNodes, savedActivePath, onToggle, onPathChange)` — observable via absence of `.is-active` changes on `document` keydown before `mouseenter`.
    - Subtasks:
-     - [ ] Remove `container.setAttribute('tabindex', '0')`, `container.focus()`, and the
+     - [x] Remove `container.setAttribute('tabindex', '0')`, `container.focus()`, and the
        existing `container.addEventListener('keydown', ...)` block.
-     - [ ] Define a named `keyHandler = (e: KeyboardEvent) => void` stub (empty body) inside
+     - [x] Define a named `keyHandler = (e: KeyboardEvent) => void` stub (empty body) inside
        the closure, after `render` is defined.
-     - [ ] Add `container.addEventListener('mouseenter', () => document.addEventListener('keydown', keyHandler))`.
-     - [ ] Add `container.addEventListener('mouseleave', () => document.removeEventListener('keydown', keyHandler))`.
+     - [x] Add `container.addEventListener('mouseenter', () => document.addEventListener('keydown', keyHandler))`.
+     - [x] Add `container.addEventListener('mouseleave', () => document.removeEventListener('keydown', keyHandler))`.
    - Acceptance:
      1. [tracer] Given: `renderMillerUI` called with 2 root nodes, no `mouseenter` fired.
         When: `ArrowDown` dispatched to `document`. Then: no `.miller-item` has `is-active`.
      2. Given: `mouseenter` then `mouseleave` fired on container. When: `ArrowDown` dispatched
         to `document`. Then: no `.miller-item` has `is-active` (listener was removed).
 
-2. [ ] Wire `↑`/`↓` to within-column navigation; implement init guard
+2. [x] Wire `↑`/`↓` to within-column navigation; implement init guard
 
    - Boundary: `renderer.ts: renderMillerUI(...)` — observable via `.is-active` on `.miller-item` elements after `document` keydown while hovered.
    - The init guard (`if activePath.length === 0: activePath = [rootNodes[0]]`) is introduced here
@@ -82,7 +82,7 @@ dispatching before `mouseenter` or after `mouseleave` has no effect.
         (clamp at top).
      5. Given: hovered, `B` selected. When: `ArrowUp`. Then: `A` has `is-active`.
 
-3. [ ] Wire `→`/`←` to column-depth navigation
+3. [x] Wire `→`/`←` to column-depth navigation
 
    - Boundary: `renderer.ts: renderMillerUI(...)` — observable via `.miller-column` count and `.is-active` class.
    - Acceptance:
@@ -101,7 +101,7 @@ dispatching before `mouseenter` or after `mouseleave` has no effect.
         root[0]; ArrowLeft at root depth is a no-op; root[0] has `is-active`, column count
         unchanged.
 
-4. [ ] Retire stale prototype keyboard tests
+4. [x] Retire stale prototype keyboard tests
 
    - Boundary: `src/__tests__/renderer.test.ts` — delete the entire `describe('keyboard navigation (prototype)')` block (tests for `h`/`j`/`k`/`l` dispatched to `container`).
    - Decision: h/j/k/l key support removed — see `decisions.md`.
