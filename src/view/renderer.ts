@@ -125,6 +125,12 @@ export function renderMillerUI(
 			currentNodes = nextNodes || [];
 			depth++;
 		}
+
+		const activeItems = container.querySelectorAll<HTMLElement>('.miller-item.is-active');
+		const deepest = activeItems[activeItems.length - 1];
+		if (deepest && typeof deepest.scrollIntoView === 'function') {
+			deepest.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+		}
 	};
 
 	let activeInput: HTMLInputElement | null = null;
