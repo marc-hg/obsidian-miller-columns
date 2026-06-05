@@ -42,6 +42,18 @@ handling. Moving key handling to `main.ts` would leak renderer-internal state up
 the controller to understand column structure. A dedicated module adds indirection with no reuse
 value at this scope (YAGNI).
 
+## h/j/k/l key support: removed for now
+
+**Decision:** `h`, `j`, `k`, `l` keys are not wired in the new `document`-level `keyHandler`.
+Their existing tests in `describe('keyboard navigation (prototype)')` are deleted.
+
+**Alternatives considered:**
+
+- Preserve h/j/k/l by adding them to the new document listener alongside arrow keys
+
+**Why alternatives were discarded:** User chose clean break — arrow keys only for this spec.
+h/j/k/l support deferred to a future spec.
+
 ## Visual focus indicator: reuse existing highlight
 
 **Decision:** Keyboard focus uses the same active-item CSS highlight applied on mouse click. No
