@@ -29,7 +29,7 @@ Replace the renderer's prototype activation model (tabindex + container listener
 
 ### Preconditions
 
-- [ ] Existing test suite passes before any changes are made.
+- [x] Existing test suite passes before any changes are made.
   - Verification: `npm test` exits 0.
   - Resolution: fix pre-existing failures out-of-band before starting Phase 1.
 
