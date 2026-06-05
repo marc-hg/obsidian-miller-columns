@@ -122,7 +122,7 @@ selected item, `Space` dispatched to `document` calls `onToggle` with that node 
 
 ### Phase 2 Tasks
 
-1. [ ] Implement `Space` toggle
+1. [x] Implement `Space` toggle
 
    - Boundary: `renderer.ts: renderMillerUI(...)` — observable via `onToggle` spy and `event.defaultPrevented`.
    - Acceptance:
@@ -133,7 +133,7 @@ selected item, `Space` dispatched to `document` calls `onToggle` with that node 
         guard fires (root[0] selected), then `onToggle` called with root[0].
      3. Given: not hovered. When: `Space` dispatched. Then: `onToggle` not called.
 
-2. [ ] Verify `preventDefault` on all five intercepted keys
+2. [x] Verify `preventDefault` on all five intercepted keys
 
    - Boundary: `renderer.ts: renderMillerUI(...)` — observable via `event.defaultPrevented` on cancelable `KeyboardEvent` dispatched to `document` while hovered.
    - Acceptance:
@@ -143,7 +143,7 @@ selected item, `Space` dispatched to `document` calls `onToggle` with that node 
      3. Given: hovered. When: `ArrowRight` dispatched. Then: `event.defaultPrevented` is `true`.
      4. Given: hovered. When: `ArrowLeft` dispatched. Then: `event.defaultPrevented` is `true`.
 
-3. [ ] Verify `onPathChange` fires on every navigation mutation
+3. [x] Verify `onPathChange` fires on every navigation mutation
 
    - Boundary: `renderer.ts: renderMillerUI(...)` — observable via `onPathChange` spy.
    - Acceptance:
