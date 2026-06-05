@@ -1,5 +1,5 @@
 ---
-status: internally-reviewed
+status: validated
 ---
 
 # Implementation Plan: Add Keyboard Navigation
