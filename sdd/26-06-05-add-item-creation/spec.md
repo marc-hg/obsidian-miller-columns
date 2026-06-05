@@ -1,5 +1,5 @@
 ---
-status: draft
+status: internally-reviewed
 ---
 
 # Spec: Add Item Creation
@@ -24,7 +24,9 @@ a context switch for a common authoring operation.
 - Confirming with non-empty text writes `- [ ] <text>` to the file at the computed line; the
   new item becomes the active selection.
 - Confirming with empty text or pressing `Escape` discards the operation with no file write.
-- Indentation of the new line is copied from the adjacent sibling's raw line prefix.
+- Indentation of the new line is copied from the adjacent sibling's raw line prefix. For child
+  insertion on a leaf node, indentation is inferred from the nearest indented sibling elsewhere
+  in the file (fallback: two spaces appended to the focused node's prefix).
 - Item creation is scoped to the hovered miller panel — same hover activation as arrow key
   navigation.
 
@@ -46,8 +48,8 @@ a context switch for a common authoring operation.
   `renderMillerUI`.
 - **`model/mutator.ts`** — gains a new export `insertItem(fileText, afterLine, indent, text):
   string` that inserts one line into the file text.
-- **`main.ts`** — wires `onInsert`: computes `afterLine` and `indent` from the `MillerNode`
-  tree, calls `insertItem`, writes back to the editor.
+- **`main.ts`** — wires `onInsert`: receives `afterLine`, `indent`, and `text`; calls
+  `insertItem`, writes back to the editor.
 - **`src/__tests__/item-creator.test.ts`** (new) — unit tests for `ItemCreator`.
 - **`src/__tests__/mutator.test.ts`** — extended with `insertItem` test cases.
 
@@ -73,11 +75,12 @@ a context switch for a common authoring operation.
   indented one level deeper than the focused item.
 - **Confirmed:** `insertItem` in `mutator.ts` is a pure function — receives full file text and
   returns modified text; no side effects.
-- **Confirmed:** `main.ts` is responsible for computing `afterLine` and `indent` from the
-  `MillerNode` tree before calling `onInsert`.
+- **Confirmed:** the renderer is responsible for computing `afterLine` and `indent` from the
+  `MillerNode` tree (via `originalLine` values) before calling `onInsert`. `main.ts` receives
+  them as parameters and performs only the file write.
 - **Accepted risk:** Obsidian may intercept `Enter`/`Shift+Enter` before the hover-scoped
   listener fires. Validated at the implementation gate; fallback keys defined.
-- **Accepted risk:** if `afterLine` computed by main.ts is stale (file changed between last
+- **Accepted risk:** if `afterLine` computed by the renderer is stale (file changed between last
   parse and the user pressing `Enter`), the insertion may land at the wrong line. Accepted
   because the post-processor re-fires on every file save, keeping the tree fresh during normal
   use.
@@ -128,17 +131,32 @@ keyHandler (Enter/Shift+Enter)
   → compute insertType (sibling | child) from key + activePath
   → call ItemCreator.createInlineInput(colEl, insertIndex, onConfirm, onCancel)
   → user types text + confirms
+  → renderer computes afterLine + indent from MillerNode tree
+  → renderer calls onPathChange([..., afterLine + 1]) to prime savedActivePath
   → renderer calls onInsert(text, afterLine, indent)
   → main.ts: fileText = insertItem(editor.getValue(), afterLine, indent, text)
   → editor.setValue(fileText)
-  → Obsidian re-renders → post-processor fires → miller view updates
-  → new item selected via savedActivePath
+  → Obsidian re-renders → post-processor fires → renderMillerUI called with savedActivePath
+  → new item has is-active (line matches savedActivePath entry)
 ```
 
-### afterLine computation (main.ts)
+### afterLine and indent computation (renderer)
+
+**afterLine:**
 
 - **Sibling:** walk the focused node's subtree depth-first; `afterLine` = `originalLine` of the
   deepest last descendant.
 - **Child:** `afterLine` = `originalLine` of the focused node itself.
 - **No selection (root append):** `afterLine` = `originalLine` of the last root node's deepest
   last descendant (i.e., the last line of the entire list).
+
+**indent:**
+
+- **Sibling insert:** read the raw line prefix (leading whitespace) of the focused node's own
+  file line — that is the indent string.
+- **Child insert (node has existing children):** read the raw line prefix of the first existing
+  child's file line.
+- **Child insert on leaf (no existing children):** scan the file for the nearest line that has
+  more indentation than the focused node; use the difference between that line's prefix and the
+  focused node's prefix as the indent unit; append it to the focused node's prefix. Fallback: two
+  spaces appended to the focused node's prefix.
