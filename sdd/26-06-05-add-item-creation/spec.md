@@ -1,5 +1,5 @@
 ---
-status: internally-reviewed
+status: validated
 ---
 
 # Spec: Add Item Creation
