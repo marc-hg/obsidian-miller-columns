@@ -1,5 +1,5 @@
 ---
-status: validated
+status: implemented
 ---
 
 # Implementation Plan: Add Keyboard Navigation
