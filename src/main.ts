@@ -1,7 +1,7 @@
-import { toggleCheckboxInText } from 'model/mutator';
+import { toggleCheckboxInText, insertItem } from 'model/mutator';
 import { parseListToTree } from 'model/parser';
 import { Plugin, MarkdownPostProcessorContext, MarkdownView } from 'obsidian';
-import { renderMillerUI } from 'view/renderer';
+import { renderMillerUI, computeDefaultActivePath } from 'view/renderer';
 
 
 export default class MillerColumnsPlugin extends Plugin {
@@ -25,9 +25,18 @@ export default class MillerColumnsPlugin extends Plugin {
 				const lines = fileContent.split('\n');
 				const rawMarkdown = lines.slice(sectionInfo.lineStart, sectionInfo.lineEnd + 1).join('\n');
 				const tree = parseListToTree(rawMarkdown, sectionInfo.lineStart);
-				const savedPath = this.activePathState.get(sectionInfo.lineStart) ?? [];
 
-				renderMillerUI(container, tree, savedPath, (node) => {
+				// Auto-expand first branch on initial load so multiple columns are visible
+				// (classic Miller columns behavior). Persist immediately so it survives re-renders.
+				let activePath = this.activePathState.get(sectionInfo.lineStart) ?? [];
+				if (activePath.length === 0) {
+					activePath = computeDefaultActivePath(tree, 2);
+					if (activePath.length > 0) {
+						this.activePathState.set(sectionInfo.lineStart, activePath);
+					}
+				}
+
+				renderMillerUI(container, tree, activePath, (node) => {
 					const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
 					if (!activeView || !activeView.file) return;
 
@@ -56,6 +65,21 @@ export default class MillerColumnsPlugin extends Plugin {
 					}
 				}, (path) => {
 					this.activePathState.set(sectionInfo.lineStart, path);
+				}, (text, afterLine, indent) => {
+					const activeView = this.app.workspace.getActiveViewOfType(MarkdownView);
+					if (!activeView || !activeView.file) return;
+					const file = activeView.file;
+
+					if (activeView.getMode() === 'preview') {
+						this.app.vault.read(file).then(currentText => {
+							const newText = insertItem(currentText, afterLine, indent, text);
+							return this.app.vault.modify(file, newText).then(() => buildUI(newText));
+						});
+					} else {
+						const editor = activeView.editor;
+						const newText = insertItem(editor.getValue(), afterLine, indent, text);
+						editor.setValue(newText);
+					}
 				});
 			};
 

@@ -11,7 +11,7 @@ const noop = () => {};
 describe('renderMillerUI', () => {
     it('renders one column for flat list', () => {
         const container = document.createElement('div');
-        renderMillerUI(container, [makeNode('A'), makeNode('B')], [], noop, noop);
+        renderMillerUI(container, [makeNode('A'), makeNode('B')], [], noop, noop, noop);
 
         expect(container.querySelectorAll('.miller-column').length).toBe(1);
         expect(container.querySelectorAll('.miller-item').length).toBe(2);
@@ -20,7 +20,7 @@ describe('renderMillerUI', () => {
     it('renders second column after clicking node with children', () => {
         const container = document.createElement('div');
         const nodes = [makeNode('Parent', [makeNode('Child')])];
-        renderMillerUI(container, nodes, [], noop, noop);
+        renderMillerUI(container, nodes, [], noop, noop, noop);
 
         (container.querySelector('.miller-item') as HTMLElement).click();
 
@@ -30,7 +30,7 @@ describe('renderMillerUI', () => {
 
     it('marks clicked node as active', () => {
         const container = document.createElement('div');
-        renderMillerUI(container, [makeNode('A'), makeNode('B')], [], noop, noop);
+        renderMillerUI(container, [makeNode('A'), makeNode('B')], [], noop, noop, noop);
 
         (container.querySelectorAll('.miller-item')[1] as HTMLElement).click();
 
@@ -43,7 +43,7 @@ describe('renderMillerUI', () => {
         const container = document.createElement('div');
         const node = makeNode('Task');
         const onToggle = vi.fn();
-        renderMillerUI(container, [node], [], onToggle, noop);
+        renderMillerUI(container, [node], [], onToggle, noop, noop);
 
         (container.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
 
@@ -53,7 +53,7 @@ describe('renderMillerUI', () => {
 
     it('reflects isCompleted state on checkbox', () => {
         const container = document.createElement('div');
-        renderMillerUI(container, [makeNode('Done', [], true)], [], noop, noop);
+        renderMillerUI(container, [makeNode('Done', [], true)], [], noop, noop, noop);
 
         const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
         expect(checkbox.checked).toBe(true);
@@ -63,7 +63,7 @@ describe('renderMillerUI', () => {
         const container = document.createElement('div');
         const child = makeNode('Child', [], false, 2);
         const parent = makeNode('Parent', [child], false, 1);
-        renderMillerUI(container, [parent], [1], noop, noop);
+        renderMillerUI(container, [parent], [1], noop, noop, noop);
 
         expect(container.querySelectorAll('.miller-column').length).toBe(2);
         expect(container.querySelector('.miller-item.is-active')).not.toBeNull();
@@ -73,7 +73,7 @@ describe('renderMillerUI', () => {
         const container = document.createElement('div');
         const node = makeNode('A', [], false, 5);
         const onPathChange = vi.fn();
-        renderMillerUI(container, [node], [], noop, onPathChange);
+        renderMillerUI(container, [node], [], noop, onPathChange, noop);
 
         (container.querySelector('.miller-item') as HTMLElement).click();
 
@@ -145,7 +145,7 @@ describe('keyboard navigation — →/← column depth', () => {
         document.body.appendChild(container);
         const child = makeNode('Child', [], 2);
         const parent = makeNode('Parent', [child], 1);
-        renderMillerUI(container, [parent], [1], noop, noop);
+        renderMillerUI(container, [parent], [1], noop, noop, noop);
 
         hover(container);
         key('ArrowRight');
@@ -159,7 +159,7 @@ describe('keyboard navigation — →/← column depth', () => {
     it('leaf selected + ArrowRight → column count unchanged', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('Leaf', [], 1)], [1], noop, noop);
+        renderMillerUI(container, [makeNode('Leaf', [], 1)], [1], noop, noop, noop);
 
         hover(container);
         key('ArrowRight');
@@ -171,7 +171,7 @@ describe('keyboard navigation — →/← column depth', () => {
     it('root depth + ArrowLeft → no change, no crash', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, noop, noop);
 
         hover(container);
         key('ArrowLeft');
@@ -186,7 +186,7 @@ describe('keyboard navigation — →/← column depth', () => {
         document.body.appendChild(container);
         const child = makeNode('Child', [], 2);
         const parent = makeNode('Parent', [child], 1);
-        renderMillerUI(container, [parent], [1, 2], noop, noop);
+        renderMillerUI(container, [parent], [1, 2], noop, noop, noop);
 
         hover(container);
         key('ArrowLeft');
@@ -201,7 +201,7 @@ describe('keyboard navigation — →/← column depth', () => {
         document.body.appendChild(container);
         const child = makeNode('Child', [], 2);
         const root = makeNode('Root', [child], 1);
-        renderMillerUI(container, [root], [], noop, noop);
+        renderMillerUI(container, [root], [], noop, noop, noop);
 
         hover(container);
         key('ArrowRight');
@@ -213,7 +213,7 @@ describe('keyboard navigation — →/← column depth', () => {
     it('empty path + ArrowLeft → guard selects root[0], left is no-op at root', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('Root', [], 1)], [], noop, noop);
+        renderMillerUI(container, [makeNode('Root', [], 1)], [], noop, noop, noop);
 
         hover(container);
         key('ArrowLeft');
@@ -246,7 +246,7 @@ describe('keyboard navigation — ↑/↓ within column', () => {
         document.body.appendChild(container);
         const a = makeNode('A', [], 1);
         const b = makeNode('B', [], 2);
-        renderMillerUI(container, [a, b], [1], noop, noop);
+        renderMillerUI(container, [a, b], [1], noop, noop, noop);
 
         hover(container);
         key('ArrowDown');
@@ -258,7 +258,7 @@ describe('keyboard navigation — ↑/↓ within column', () => {
     it('empty path + ArrowDown → guard initializes to A, then moves to B', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [], noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [], noop, noop, noop);
 
         hover(container);
         key('ArrowDown');
@@ -270,7 +270,7 @@ describe('keyboard navigation — ↑/↓ within column', () => {
     it('B selected (last) + ArrowDown → B stays (clamp)', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [2], noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [2], noop, noop, noop);
 
         hover(container);
         key('ArrowDown');
@@ -282,7 +282,7 @@ describe('keyboard navigation — ↑/↓ within column', () => {
     it('A selected (first) + ArrowUp → A stays (clamp)', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, noop, noop);
 
         hover(container);
         key('ArrowUp');
@@ -294,7 +294,7 @@ describe('keyboard navigation — ↑/↓ within column', () => {
     it('B selected + ArrowUp → A is-active', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [2], noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [2], noop, noop, noop);
 
         hover(container);
         key('ArrowUp');
@@ -306,7 +306,7 @@ describe('keyboard navigation — ↑/↓ within column', () => {
     it('single item + ArrowDown → stays on single item', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, noop, noop);
 
         hover(container);
         key('ArrowDown');
@@ -318,7 +318,7 @@ describe('keyboard navigation — ↑/↓ within column', () => {
     it('single item + ArrowUp → stays on single item', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, noop, noop);
 
         hover(container);
         key('ArrowUp');
@@ -336,7 +336,7 @@ describe('hover-gates-arrow-navigation (Phase 1 acceptance)', () => {
     it('ArrowDown on document while hovered selects first item', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [], noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [], noop, noop, noop);
 
         container.dispatchEvent(new MouseEvent('mouseenter'));
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
@@ -351,7 +351,7 @@ describe('hover-gates-arrow-navigation (Phase 1 acceptance)', () => {
     it('arrow keys on document have no effect before mouseenter', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A'), makeNode('B')], [], noop, noop);
+        renderMillerUI(container, [makeNode('A'), makeNode('B')], [], noop, noop, noop);
 
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
 
@@ -365,7 +365,7 @@ describe('hover-gates-arrow-navigation (Phase 1 acceptance)', () => {
         const child = makeNode('Child', [], 2);
         const parent = makeNode('Parent', [child], 1);
         // start with parent selected so 2 columns visible
-        renderMillerUI(container, [parent], [1], noop, noop);
+        renderMillerUI(container, [parent], [1], noop, noop, noop);
 
         container.dispatchEvent(new MouseEvent('mouseenter'));
         container.dispatchEvent(new MouseEvent('mouseleave'));
@@ -391,7 +391,7 @@ describe('keyboard navigation — Space toggle', () => {
         document.body.appendChild(container);
         const node = makeNode('A', [], 1);
         const onToggle = vi.fn();
-        renderMillerUI(container, [node], [1], onToggle, noop);
+        renderMillerUI(container, [node], [1], onToggle, noop, noop);
 
         hover(container);
         const e = new KeyboardEvent('keydown', { key: ' ', cancelable: true, bubbles: true });
@@ -408,7 +408,7 @@ describe('keyboard navigation — Space toggle', () => {
         document.body.appendChild(container);
         const node = makeNode('A', [], 1);
         const onToggle = vi.fn();
-        renderMillerUI(container, [node], [], onToggle, noop);
+        renderMillerUI(container, [node], [], onToggle, noop, noop);
 
         hover(container);
         document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
@@ -422,7 +422,7 @@ describe('keyboard navigation — Space toggle', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
         const onToggle = vi.fn();
-        renderMillerUI(container, [makeNode('A', [], 1)], [1], onToggle, noop);
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], onToggle, noop, noop);
 
         document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
 
@@ -439,7 +439,7 @@ describe('keyboard navigation — preventDefault on all intercepted keys', () =>
     function setup(): HTMLElement {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, noop, noop);
         container.dispatchEvent(new MouseEvent('mouseenter'));
         return container;
     }
@@ -492,7 +492,7 @@ describe('keyboard navigation — onPathChange fires on mutation', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
         const onPathChange = vi.fn();
-        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, onPathChange);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, onPathChange, noop);
 
         hover(container);
         key('ArrowDown');
@@ -507,7 +507,7 @@ describe('keyboard navigation — onPathChange fires on mutation', () => {
         const onPathChange = vi.fn();
         const child = makeNode('Child', [], 2);
         const parent = makeNode('Parent', [child], 1);
-        renderMillerUI(container, [parent], [1], noop, onPathChange);
+        renderMillerUI(container, [parent], [1], noop, onPathChange, noop);
 
         hover(container);
         key('ArrowRight');
@@ -522,7 +522,7 @@ describe('keyboard navigation — onPathChange fires on mutation', () => {
         const onPathChange = vi.fn();
         const child = makeNode('Child', [], 2);
         const parent = makeNode('Parent', [child], 1);
-        renderMillerUI(container, [parent], [1, 2], noop, onPathChange);
+        renderMillerUI(container, [parent], [1, 2], noop, onPathChange, noop);
 
         hover(container);
         key('ArrowLeft');
@@ -535,7 +535,7 @@ describe('keyboard navigation — onPathChange fires on mutation', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
         const onPathChange = vi.fn();
-        renderMillerUI(container, [makeNode('Leaf', [], 1)], [1], noop, onPathChange);
+        renderMillerUI(container, [makeNode('Leaf', [], 1)], [1], noop, onPathChange, noop);
 
         hover(container);
         key('ArrowRight');
@@ -548,7 +548,7 @@ describe('keyboard navigation — onPathChange fires on mutation', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
         const onPathChange = vi.fn();
-        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, onPathChange);
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], noop, onPathChange, noop);
 
         hover(container);
         key('ArrowLeft');
@@ -568,7 +568,7 @@ describe('space-toggles-focused-item (Phase 2 acceptance)', () => {
         document.body.appendChild(container);
         const node = makeNode('A', [], 1);
         const onToggle = vi.fn();
-        renderMillerUI(container, [node], [1], onToggle, noop);
+        renderMillerUI(container, [node], [1], onToggle, noop, noop);
 
         container.dispatchEvent(new MouseEvent('mouseenter'));
         const e = new KeyboardEvent('keydown', { key: ' ', cancelable: true, bubbles: true });

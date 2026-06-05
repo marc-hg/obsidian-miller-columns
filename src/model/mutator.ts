@@ -1,9 +1,4 @@
 // src/model/mutator.ts
-
-/**
- * Takes the full markdown file content, targets a specific line,
- * and toggles the markdown checkbox state between [ ] and [x].
- */
 export function toggleCheckboxInText(fullText: string, targetLine: number): string {
 	const lines = fullText.split('\n');
 
@@ -26,5 +21,11 @@ export function toggleCheckboxInText(fullText: string, targetLine: number): stri
 	// Replace the old checkbox with the new one
 	lines[targetLine] = line.replace(checkboxRegex, `[${newState}]`);
 
+	return lines.join('\n');
+}
+
+export function insertItem(fileText: string, afterLine: number, indent: string, text: string): string {
+	const lines = fileText.split('\n');
+	lines.splice(afterLine + 1, 0, `${indent}- [ ] ${text}`);
 	return lines.join('\n');
 }

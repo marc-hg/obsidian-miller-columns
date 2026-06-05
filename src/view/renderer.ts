@@ -38,6 +38,12 @@ function navigateAscend(activePath: MillerNode[]): MillerNode[] {
 	return activePath.slice(0, -1);
 }
 
+function lastDescendantLine(node: MillerNode): number {
+	if (node.children.length === 0) return node.originalLine;
+	const last = node.children[node.children.length - 1];
+	return last ? lastDescendantLine(last) : node.originalLine;
+}
+
 /**
  * Computes an initial activePath by following the first child at each level.
  * This provides the "auto-expand first branch on load" behavior so multiple
@@ -71,7 +77,8 @@ export function renderMillerUI(
 	rootNodes: MillerNode[],
 	savedActivePath: number[],
 	onToggle: (node: MillerNode) => void,
-	onPathChange: (path: number[]) => void
+	onPathChange: (path: number[]) => void,
+	onInsert: (text: string, afterLine: number, indent: string) => void
 ) {
 	container.empty();
 	container.addClass('miller-columns-wrapper');
@@ -120,9 +127,68 @@ export function renderMillerUI(
 		}
 	};
 
+	let activeInput: HTMLInputElement | null = null;
+
+	const handleInsert = (isChild: boolean) => {
+		const focused = activePath[activePath.length - 1];
+
+		let afterLine: number;
+		let indent: string;
+		let targetDepth: number;
+
+		if (!focused) {
+			if (isChild || rootNodes.length === 0) return;
+			const lastRoot = rootNodes[rootNodes.length - 1]!;
+			afterLine = lastDescendantLine(lastRoot);
+			indent = '';
+			targetDepth = 0;
+		} else if (isChild) {
+			afterLine = focused.originalLine;
+			indent = '  '.repeat(activePath.length);
+			targetDepth = activePath.length;
+		} else {
+			afterLine = lastDescendantLine(focused);
+			indent = '  '.repeat(activePath.length - 1);
+			targetDepth = activePath.length - 1;
+		}
+
+		render();
+
+		const cols = container.querySelectorAll<HTMLElement>('.miller-column');
+		const colEl = cols[targetDepth];
+		if (!colEl) return;
+
+		const inputEl = document.createElement('input');
+		inputEl.type = 'text';
+		inputEl.className = 'miller-new-item-input';
+		colEl.appendChild(inputEl);
+		inputEl.focus();
+		activeInput = inputEl;
+
+		const cleanup = () => { inputEl.remove(); activeInput = null; };
+
+		inputEl.addEventListener('keydown', (ev) => {
+			ev.stopPropagation();
+			if (ev.key === 'Enter') {
+				const text = inputEl.value.trim();
+				cleanup();
+				if (text) {
+					const newItemLine = afterLine + 1;
+					const parentLines = isChild
+						? activePath.map(n => n.originalLine)
+						: activePath.slice(0, -1).map(n => n.originalLine);
+					onPathChange([...parentLines, newItemLine]);
+					onInsert(text, afterLine, indent);
+				}
+			} else if (ev.key === 'Escape') {
+				cleanup();
+			}
+		});
+	};
+
 	const keyHandler = (e: KeyboardEvent): void => {
 		const { key } = e;
-		if (key !== 'ArrowUp' && key !== 'ArrowDown' && key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== ' ') return;
+		if (key !== 'ArrowUp' && key !== 'ArrowDown' && key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== ' ' && key !== 'Enter') return;
 
 		e.preventDefault();
 		e.stopPropagation();
@@ -156,6 +222,9 @@ export function renderMillerUI(
 			const focused = activePath[activePath.length - 1];
 			if (focused) onToggle(focused);
 			return;
+		} else if (key === 'Enter') {
+			handleInsert(e.shiftKey);
+			return;
 		}
 
 		if (newPath === activePath && !guardFired) return;
@@ -165,7 +234,10 @@ export function renderMillerUI(
 	};
 
 	container.addEventListener('mouseenter', () => document.addEventListener('keydown', keyHandler));
-	container.addEventListener('mouseleave', () => document.removeEventListener('keydown', keyHandler));
+	container.addEventListener('mouseleave', () => {
+		document.removeEventListener('keydown', keyHandler);
+		if (activeInput) { activeInput.remove(); activeInput = null; }
+	});
 
 	render();
 }
