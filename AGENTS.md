@@ -33,6 +33,20 @@ npm run dev
 npm run build
 ```
 
+### Deploy to Syncthing vault
+
+```bash
+npm run deploy:vault
+```
+
+- Runs `npm run build` first, then copies `main.js`, `manifest.json`, and `styles.css`
+  when present to
+  `~/Syncthing/ObsidianVault/.obsidian/plugins/obsidian-miller-columns`.
+- The target plugin directory must already exist. The deploy script fails instead of creating it.
+- Only release artifacts are copied; unrelated files in the vault plugin directory, such as
+  `data.json`, are preserved.
+- Keep `npm run build` as a pure production build command. Do not make it deploy to the vault.
+
 ## Linting
 
 - To use eslint install eslint from terminal: `npm install -g eslint`
@@ -81,9 +95,11 @@ npm run build
 ## Testing
 
 - Manual install for testing: copy `main.js`, `manifest.json`, `styles.css` (if any) to:
-  ```
+  ```text
   <Vault>/.obsidian/plugins/<plugin-id>/
   ```
+- For this repo's configured Syncthing-backed development vault, use `npm run deploy:vault`
+  after intentionally creating the target plugin directory.
 - Reload Obsidian and enable the plugin in **Settings → Community plugins**.
 
 ## Commands & settings

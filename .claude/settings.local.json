@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -i '' 's/await this.app.vault.cachedRead\\(view.file\\)/view.editor.getValue\\(\\)/' src/main.ts)",
+      "Bash(npx vitest *)",
+      "Bash(npm test *)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)"
+    ]
+  }
+}

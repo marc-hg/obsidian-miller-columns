@@ -173,4 +173,37 @@ describe('MillerColumnsPlugin integration', () => {
 
         expect(element.querySelectorAll('.miller-column').length).toBe(2);
     });
+
+    it('preview mode: inserted item appears after inline input confirm', async () => {
+        const original = '- [ ] Task A #miller-view';
+        const updated = '- [ ] Task A #miller-view\n- [ ] Task B';
+        mockVault.cachedRead.mockResolvedValue(original);
+        mockVault.read.mockResolvedValue(original);
+        mockView.getMode.mockReturnValue('preview');
+        element.textContent = '#miller-view';
+
+        await postProcessor(element, { getSectionInfo: () => ({ lineStart: 0, lineEnd: 0 }) });
+
+        const container = element.querySelector<HTMLElement>('.miller-columns-wrapper');
+        expect(container).not.toBeNull();
+        if (!container) throw new Error('Expected Miller columns wrapper');
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+
+        const input = element.querySelector<HTMLInputElement>('input.miller-new-item-input');
+        expect(input).not.toBeNull();
+        if (!input) throw new Error('Expected inline input');
+
+        input.value = 'Task B';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+
+        await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalledWith(mockView.file, updated));
+
+        const itemTexts = Array.from(
+            element.querySelectorAll('.miller-item span'),
+            span => span.textContent
+        );
+        expect(itemTexts).toContain('Task B');
+    });
 });

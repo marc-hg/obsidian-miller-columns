@@ -191,7 +191,16 @@ export function renderMillerUI(
 		});
 	};
 
-	const keyHandler = (e: KeyboardEvent): void => {
+	function detachKeyHandler(): void {
+		document.removeEventListener('keydown', keyHandler);
+	}
+
+	function keyHandler(e: KeyboardEvent): void {
+		if (!container.isConnected) {
+			detachKeyHandler();
+			return;
+		}
+
 		const { key } = e;
 		if (key !== 'ArrowUp' && key !== 'ArrowDown' && key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== ' ' && key !== 'Enter') return;
 
@@ -238,11 +247,11 @@ export function renderMillerUI(
 		activePath = newPath;
 		onPathChange(activePath.map(n => n.originalLine));
 		render();
-	};
+	}
 
 	container.addEventListener('mouseenter', () => document.addEventListener('keydown', keyHandler));
 	container.addEventListener('mouseleave', () => {
-		document.removeEventListener('keydown', keyHandler);
+		detachKeyHandler();
 		if (activeInput) { activeInput.remove(); activeInput = null; }
 	});
 

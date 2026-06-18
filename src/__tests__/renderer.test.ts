@@ -429,6 +429,22 @@ describe('keyboard navigation — Space toggle', () => {
         expect(onToggle).not.toHaveBeenCalled();
         document.body.removeChild(container);
     });
+
+    it('removed hovered panel + Space → no stale global capture', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const onToggle = vi.fn();
+        renderMillerUI(container, [makeNode('A', [], 1)], [1], onToggle, noop, noop);
+
+        hover(container);
+        document.body.removeChild(container);
+
+        const e = new KeyboardEvent('keydown', { key: ' ', cancelable: true, bubbles: true });
+        document.dispatchEvent(e);
+
+        expect(onToggle).not.toHaveBeenCalled();
+        expect(e.defaultPrevented).toBe(false);
+    });
 });
 
 describe('keyboard navigation — preventDefault on all intercepted keys', () => {

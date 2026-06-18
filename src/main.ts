@@ -20,10 +20,11 @@ export default class MillerColumnsPlugin extends Plugin {
 
 			element.empty();
 			const container = element.createDiv();
+			let currentLineEnd = sectionInfo.lineEnd;
 
 			const buildUI = (fileContent: string) => {
 				const lines = fileContent.split('\n');
-				const rawMarkdown = lines.slice(sectionInfo.lineStart, sectionInfo.lineEnd + 1).join('\n');
+				const rawMarkdown = lines.slice(sectionInfo.lineStart, currentLineEnd + 1).join('\n');
 				const tree = parseListToTree(rawMarkdown, sectionInfo.lineStart);
 
 				// Auto-expand first branch on initial load so multiple columns are visible
@@ -45,9 +46,13 @@ export default class MillerColumnsPlugin extends Plugin {
 					if (activeView.getMode() === 'preview') {
 						// Reading mode: vault.modify + immediate re-render via buildUI.
 						// Post-processor re-fired by Obsidian will use cachedRead (not stale editor state).
-						this.app.vault.read(file).then(currentText => {
+						void (async (): Promise<void> => {
+							const currentText = await this.app.vault.read(file);
 							const newText = toggleCheckboxInText(currentText, node.originalLine);
-							return this.app.vault.modify(file, newText).then(() => buildUI(newText));
+							await this.app.vault.modify(file, newText);
+							buildUI(newText);
+						})().catch((error: unknown) => {
+							console.error('Miller Columns: failed to toggle checkbox', error);
 						});
 					} else {
 						// Edit mode: replaceRange preserves cursor position
@@ -71,14 +76,21 @@ export default class MillerColumnsPlugin extends Plugin {
 					const file = activeView.file;
 
 					if (activeView.getMode() === 'preview') {
-						this.app.vault.read(file).then(currentText => {
+						void (async (): Promise<void> => {
+							const currentText = await this.app.vault.read(file);
 							const newText = insertItem(currentText, afterLine, indent, text);
-							return this.app.vault.modify(file, newText).then(() => buildUI(newText));
+							await this.app.vault.modify(file, newText);
+							currentLineEnd += 1;
+							buildUI(newText);
+						})().catch((error: unknown) => {
+							console.error('Miller Columns: failed to insert item', error);
 						});
 					} else {
 						const editor = activeView.editor;
 						const newText = insertItem(editor.getValue(), afterLine, indent, text);
 						editor.setValue(newText);
+						currentLineEnd += 1;
+						buildUI(newText);
 					}
 				});
 			};
