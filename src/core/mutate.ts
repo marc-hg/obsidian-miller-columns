@@ -1,24 +1,28 @@
-// src/model/mutator.ts
+/**
+ * Level 1: pure file-text physics. No Obsidian, no DOM.
+ */
+
 export function toggleCheckboxInText(fullText: string, targetLine: number): string {
 	const lines = fullText.split('\n');
 
 	if (targetLine < 0 || targetLine >= lines.length) {
-		return fullText; // Line out of bounds, fail silently
+		return fullText;
 	}
 
 	const line = lines[targetLine];
 
-	// Regex to find the first instance of a markdown checkbox on the line
 	const checkboxRegex = /\[([ xX])\]/;
-	if (!line) { return fullText; }
+	if (!line) {
+		return fullText;
+	}
 	const match = line.match(checkboxRegex);
-	if (!match) { return fullText; } // No checkbox found, return original text
+	if (!match) {
+		return fullText;
+	}
 
-	// Determine current state and flip it
 	const currentState = match[1];
-	const newState = (currentState === ' ' || currentState === '') ? 'x' : ' ';
+	const newState = currentState === ' ' || currentState === '' ? 'x' : ' ';
 
-	// Replace the old checkbox with the new one
 	lines[targetLine] = line.replace(checkboxRegex, `[${newState}]`);
 
 	return lines.join('\n');

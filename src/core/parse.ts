@@ -1,10 +1,13 @@
-// parser.ts
 import { MillerNode } from './types';
 
+/**
+ * Level 1: markdown checklist section → tree.
+ * Stack parser: indentation encodes parent → child.
+ */
 export function parseListToTree(rawMarkdown: string, startLine: number): MillerNode[] {
 	const lines = rawMarkdown.split('\n');
 	const rootNodes: MillerNode[] = [];
-	const stack: { node: MillerNode, indent: number }[] = [];
+	const stack: { node: MillerNode; indent: number }[] = [];
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i] ?? '';
@@ -20,7 +23,7 @@ export function parseListToTree(rawMarkdown: string, startLine: number): MillerN
 			text,
 			isCompleted,
 			originalLine: startLine + i,
-			children: []
+			children: [],
 		};
 
 		while (stack.length > 0 && (stack[stack.length - 1]?.indent ?? -1) >= indent) {

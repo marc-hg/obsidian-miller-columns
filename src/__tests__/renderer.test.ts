@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { renderMillerUI, computeDefaultActivePath } from '../view/renderer';
-import { MillerNode } from '../model/types';
+import { renderMillerUI, computeDefaultActivePath } from '../ui/render';
+import { MillerNode } from '../core/types';
 
 function makeNode(text: string, children: MillerNode[] = [], isCompleted = false, originalLine = 0): MillerNode {
     return { id: crypto.randomUUID(), text, isCompleted, originalLine, children };
@@ -328,12 +328,16 @@ describe('keyboard navigation — ↑/↓ within column', () => {
     });
 });
 
-describe('hover-gates-arrow-navigation (Phase 1 acceptance)', () => {
+describe('active-panel keyboard navigation (Phase 1 acceptance)', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
         return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
     }
 
-    it('ArrowDown on document while hovered selects first item', () => {
+    function activeText(container: HTMLElement): string | null {
+        return container.querySelector('.miller-item.is-active span')?.textContent ?? null;
+    }
+
+    it('ArrowDown on document after hover activation selects first item', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
         renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [], noop, noop, noop);
@@ -348,7 +352,7 @@ describe('hover-gates-arrow-navigation (Phase 1 acceptance)', () => {
         document.body.removeChild(container);
     });
 
-    it('arrow keys on document have no effect before mouseenter', () => {
+    it('arrow keys on document have no effect before panel activation', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
         renderMillerUI(container, [makeNode('A'), makeNode('B')], [], noop, noop, noop);
@@ -359,20 +363,46 @@ describe('hover-gates-arrow-navigation (Phase 1 acceptance)', () => {
         document.body.removeChild(container);
     });
 
-    it('arrow keys stop working after mouseleave', () => {
+    it('keyboard navigation keeps working after hover activation and mouseleave', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
-        const child = makeNode('Child', [], 2);
-        const parent = makeNode('Parent', [child], 1);
-        // start with parent selected so 2 columns visible
-        renderMillerUI(container, [parent], [1], noop, noop, noop);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, noop, noop);
 
         container.dispatchEvent(new MouseEvent('mouseenter'));
         container.dispatchEvent(new MouseEvent('mouseleave'));
-        // ArrowLeft after mouseleave should NOT collapse to 1 column
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
 
-        expect(container.querySelectorAll('.miller-column').length).toBe(2);
+        expect(activeText(container)).toBe('B');
+        document.body.removeChild(container);
+    });
+
+    it('keyboard navigation keeps working after selecting a panel and moving the pointer away', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, noop, noop);
+
+        const selectedItem = container.querySelector('.miller-item.is-active');
+        if (!(selectedItem instanceof HTMLElement)) throw new Error('Expected active item');
+        selectedItem.click();
+        container.dispatchEvent(new MouseEvent('mouseleave'));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+
+        expect(activeText(container)).toBe('B');
+        document.body.removeChild(container);
+    });
+
+    it('outside pointer activation releases keyboard ownership', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, noop, noop);
+
+        const selectedItem = container.querySelector('.miller-item.is-active');
+        if (!(selectedItem instanceof HTMLElement)) throw new Error('Expected active item');
+        selectedItem.click();
+        document.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+
+        expect(activeText(container)).toBe('A');
         document.body.removeChild(container);
     });
 });
@@ -444,6 +474,94 @@ describe('keyboard navigation — Space toggle', () => {
 
         expect(onToggle).not.toHaveBeenCalled();
         expect(e.defaultPrevented).toBe(false);
+    });
+
+    it('Space rebuild on same container keeps keyboard ownership without re-hover', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const a = makeNode('A', [], 1);
+        const b = makeNode('B', [], 2);
+        let pathLines = [1];
+        const onPathChange = vi.fn((p: number[]) => {
+            pathLines = p;
+        });
+        const sectionId = 42;
+
+        const mount = () => {
+            renderMillerUI(
+                container,
+                [a, b],
+                pathLines,
+                () => {
+                    a.isCompleted = !a.isCompleted;
+                    mount();
+                },
+                onPathChange,
+                noop,
+                sectionId
+            );
+        };
+
+        mount();
+        hover(container);
+        container.dispatchEvent(new MouseEvent('mouseleave'));
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+        expect(a.isCompleted).toBe(true);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+        expect(onPathChange).toHaveBeenCalledWith([2]);
+        expect(container.querySelector('.miller-item.is-active span')?.textContent).toBe('B');
+
+        document.body.removeChild(container);
+    });
+
+    it('Obsidian-style remount (new container, same sectionId) keeps keyboard without re-hover', () => {
+        // After vault.modify, the post-processor often replaces the whole block DOM.
+        // Keyboard focus must be keyed by sectionId, not HTMLElement identity.
+        const sectionId = 7;
+        const a = makeNode('A', [], 1);
+        const b = makeNode('B', [], 2);
+        let pathLines = [1];
+        const onPathChange = vi.fn((p: number[]) => {
+            pathLines = p;
+        });
+
+        let container = document.createElement('div');
+        document.body.appendChild(container);
+
+        const mount = (el: HTMLElement) => {
+            renderMillerUI(
+                el,
+                [a, b],
+                pathLines,
+                () => {
+                    a.isCompleted = !a.isCompleted;
+                    // Simulate Obsidian remount: destroy old container, new one, same section.
+                    document.body.removeChild(container);
+                    container = document.createElement('div');
+                    document.body.appendChild(container);
+                    mount(container);
+                },
+                onPathChange,
+                noop,
+                sectionId
+            );
+        };
+
+        mount(container);
+        hover(container);
+        container.dispatchEvent(new MouseEvent('mouseleave'));
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+        expect(a.isCompleted).toBe(true);
+
+        // New DOM under the cursor does not fire mouseenter — keys must still work.
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+        expect(onPathChange).toHaveBeenCalledWith([2]);
+        expect(container.querySelector('.miller-item.is-active span')?.textContent).toBe('B');
+
+        document.body.removeChild(container);
     });
 });
 

@@ -1,4 +1,10 @@
 // Polyfill Obsidian DOM helpers for jsdom test environment
+import { beforeEach } from 'vitest';
+import { resetKeyboardFocusForTests } from '../ui/keyboard';
+
+beforeEach(() => {
+	resetKeyboardFocusForTests();
+});
 
 // jsdom doesn't implement innerText; map it to textContent for tests
 Object.defineProperty(HTMLElement.prototype, 'innerText', {
