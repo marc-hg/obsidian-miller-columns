@@ -19,9 +19,13 @@ import { paintTree } from './paint';
 /**
  * Level 2–3 orchestrator: wires path state, paint, keyboard, and insert UI.
  *
- * Visual model:
- * - Path may be auto-expanded (muted `.is-active`) before keyboard ownership.
- * - Ownership → `.is-keyboard-active` on the wrapper (panel ring + live accent).
+ * Focus / ownership (Reading mode):
+ * - No auto-focus on open — muted path only until the user enters the panel.
+ * - Enter: Tab (tabindex=0), click, or hover (hover claims keys without stealing focus).
+ * - Exit: click outside, Tab away (focusout), Escape.
+ * - Ownership → `.is-keyboard-active` (panel ring + live accent).
+ *
+ * Paint:
  * - Path-only navigation patches classes; full paint when column structure changes.
  *
  * @param sectionId Stable id for keyboard focus (use section lineStart from the host).

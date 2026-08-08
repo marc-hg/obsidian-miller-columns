@@ -25,6 +25,16 @@ If your plugin does not need CSS, delete this file.
     box-shadow: 0 0 0 1px var(--interactive-accent);
 }
 
+/* Real DOM focus (Tab) — keep ring even if theme suppresses default outlines */
+.miller-columns-wrapper:focus {
+    outline: none;
+}
+
+.miller-columns-wrapper:focus-visible {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--interactive-accent);
+}
+
 /* Individual vertical column */
 .miller-column {
     min-width: 220px;

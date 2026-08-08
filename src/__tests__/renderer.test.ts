@@ -120,6 +120,56 @@ describe('renderMillerUI', () => {
         document.body.removeChild(container);
     });
 
+    it('panel is tabbable and focus claims keyboard ownership', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], false, 1)], [1], noop, noop, noop);
+
+        expect(container.tabIndex).toBe(0);
+        container.focus();
+        container.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+        expect(container.classList.contains('is-keyboard-active')).toBe(true);
+
+        document.body.removeChild(container);
+    });
+
+    it('Escape releases keyboard ownership', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], false, 1)], [1], noop, noop, noop);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(container.classList.contains('is-keyboard-active')).toBe(true);
+
+        document.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+        );
+        expect(container.classList.contains('is-keyboard-active')).toBe(false);
+
+        document.body.removeChild(container);
+    });
+
+    it('does not auto-claim keyboard on first paint', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(
+            container,
+            [makeNode('Parent', [makeNode('Child', [], false, 2)], false, 1)],
+            [1],
+            noop,
+            noop,
+            noop
+        );
+
+        expect(container.classList.contains('is-keyboard-active')).toBe(false);
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+        // Still on muted path — no navigation without claim
+        expect(container.querySelector('.miller-item.is-active span')?.textContent).toBe('Parent');
+
+        document.body.removeChild(container);
+    });
+
     it('sibling navigation reuses DOM nodes (no full rebuild flicker path)', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);

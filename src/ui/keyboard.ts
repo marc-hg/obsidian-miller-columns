@@ -2,6 +2,11 @@
  * Keyboard focus is keyed by section id (file lineStart), not by HTMLElement.
  * Obsidian often remounts post-processor DOM after vault.modify; container
  * identity dies, but the section is the same — focus must survive that.
+ *
+ * Ownership model (Reading mode):
+ * - Enter: Tab/focusin, click (pointerdown inside), or hover (mouseenter, no focus steal)
+ * - Exit: outside pointerdown, focus leaving the panel, Escape
+ * - No auto-focus on first paint
  */
 
 let activeSectionId: number | null = null;
@@ -11,6 +16,9 @@ const bindingsBySection = new Map<number, () => void>();
 
 /** Chrome / UI listeners notified when ownership for a section changes. */
 const ownershipListeners = new Map<number, (owned: boolean) => void>();
+
+/** Live container for a section — used to blur on release / refocus after remount. */
+const containersBySection = new Map<number, HTMLElement>();
 
 export function isKeyboardActiveForSection(sectionId: number): boolean {
 	return activeSectionId === sectionId;
@@ -33,10 +41,45 @@ export function activateKeyboard(sectionId: number): void {
 	ownershipListeners.get(sectionId)?.(true);
 }
 
-export function deactivateKeyboard(sectionId: number): void {
-	if (activeSectionId !== sectionId) return;
-	activeSectionId = null;
-	ownershipListeners.get(sectionId)?.(false);
+/**
+ * Release keyboard ownership for a section and blur DOM focus if it lives inside the panel.
+ */
+export function deactivateKeyboard(sectionId: number, options: { blur?: boolean } = {}): void {
+	const shouldBlur = options.blur !== false;
+	const container = containersBySection.get(sectionId);
+
+	if (activeSectionId === sectionId) {
+		activeSectionId = null;
+		ownershipListeners.get(sectionId)?.(false);
+	}
+
+	if (shouldBlur && container) {
+		blurIfInside(container);
+	}
+}
+
+function blurIfInside(container: HTMLElement): void {
+	const active = document.activeElement;
+	if (active instanceof HTMLElement && container.contains(active)) {
+		active.blur();
+	}
+	if (document.activeElement === container) {
+		container.blur();
+	}
+}
+
+function focusPanel(container: HTMLElement): void {
+	if (typeof container.focus !== 'function') return;
+	// Don't yank focus away from an inner control (checkbox, insert field).
+	const active = document.activeElement;
+	if (active instanceof Node && container.contains(active) && active !== container) {
+		return;
+	}
+	try {
+		container.focus({ preventScroll: true });
+	} catch {
+		container.focus();
+	}
 }
 
 /** Reset module state between tests. */
@@ -46,6 +89,7 @@ export function resetKeyboardFocusForTests(): void {
 	}
 	bindingsBySection.clear();
 	ownershipListeners.clear();
+	containersBySection.clear();
 	activeSectionId = null;
 }
 
@@ -88,7 +132,6 @@ export type BindKeyboardOptions = {
 
 /**
  * Level 3: focus ownership + key → intent.
- * Mouseleave does not deactivate. Outside pointerdown does.
  * Supports arrow keys and vim hjkl (same motions).
  */
 export function bindKeyboard(
@@ -100,21 +143,79 @@ export function bindKeyboard(
 	const previous = bindingsBySection.get(sectionId);
 	if (previous) previous();
 
+	containersBySection.set(sectionId, container);
+
 	if (options.onOwnershipChange) {
 		ownershipListeners.set(sectionId, options.onOwnershipChange);
 	} else {
 		ownershipListeners.delete(sectionId);
 	}
 
-	const onActivate = (): void => {
+	// Real DOM focus target — Tab can enter the panel in Reading mode.
+	container.tabIndex = 0;
+	if (!container.getAttribute('role')) {
+		container.setAttribute('role', 'region');
+	}
+	if (!container.getAttribute('aria-label')) {
+		container.setAttribute('aria-label', 'Miller columns');
+	}
+
+	/** Hover / programmatic claim — does not move DOM focus (avoids scroll steal). */
+	const claimWithoutFocus = (): void => {
 		activateKeyboard(sectionId);
+	};
+
+	/** Click / Tab — claim and align DOM focus with the panel when safe. */
+	const claimWithFocus = (): void => {
+		activateKeyboard(sectionId);
+		focusPanel(container);
+	};
+
+	const onMouseEnter = (): void => {
+		claimWithoutFocus();
+	};
+
+	const onFocusIn = (): void => {
+		// Tab or programmatic focus into the panel (or a child control).
+		activateKeyboard(sectionId);
+	};
+
+	const onFocusOut = (event: FocusEvent): void => {
+		const next = event.relatedTarget;
+		if (next instanceof Node && container.contains(next)) return;
+
+		// Defer: focus may land on another child in the same tick (e.g. checkbox).
+		requestAnimationFrame(() => {
+			if (!container.isConnected) return;
+			if (activeSectionId !== sectionId) return;
+			const active = document.activeElement;
+			if (active instanceof Node && container.contains(active)) return;
+			// Soft release: keep ownership if pointer is still over the panel (hover sticky),
+			// but drop if focus truly left and pointer is elsewhere.
+			// For Tab-away, pointer is usually outside → release.
+			deactivateKeyboard(sectionId, { blur: false });
+		});
+	};
+
+	const onPointerDownInside = (event: PointerEvent): void => {
+		if (event.button !== 0) return;
+		const target = event.target;
+		// Let real controls take focus themselves; still claim ownership.
+		if (
+			target instanceof HTMLElement &&
+			(target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+		) {
+			claimWithoutFocus();
+			return;
+		}
+		claimWithFocus();
 	};
 
 	const deactivateOnOutsidePointerDown = (event: PointerEvent): void => {
 		if (activeSectionId !== sectionId) return;
 		const target = event.target;
 		if (!(target instanceof Node) || container.contains(target)) return;
-		deactivateKeyboard(sectionId);
+		deactivateKeyboard(sectionId, { blur: true });
 	};
 
 	const keyHandler = (e: KeyboardEvent): void => {
@@ -129,6 +230,14 @@ export function bindKeyboard(
 		if (e.ctrlKey || e.metaKey || e.altKey) return;
 
 		const { key } = e;
+
+		if (key === 'Escape') {
+			// Exit widget mode — do not steal if an inner field already handled it (stopPropagation).
+			e.preventDefault();
+			e.stopPropagation();
+			deactivateKeyboard(sectionId, { blur: true });
+			return;
+		}
 
 		if (key === 'Enter') {
 			e.preventDefault();
@@ -156,26 +265,39 @@ export function bindKeyboard(
 	};
 
 	const cleanupListeners = (): void => {
-		container.removeEventListener('mouseenter', onActivate);
-		container.removeEventListener('focusin', onActivate);
+		container.removeEventListener('mouseenter', onMouseEnter);
+		container.removeEventListener('focusin', onFocusIn);
+		container.removeEventListener('focusout', onFocusOut);
+		container.removeEventListener('pointerdown', onPointerDownInside);
 		document.removeEventListener('pointerdown', deactivateOnOutsidePointerDown, true);
 		document.removeEventListener('keydown', keyHandler);
 		if (bindingsBySection.get(sectionId) === cleanupListeners) {
 			bindingsBySection.delete(sectionId);
 		}
-		// Keep ownership listener if a remount rebinds the same section immediately after.
-		// Only drop it when this cleanup is still the registered binding cleanup.
+		if (containersBySection.get(sectionId) === container) {
+			containersBySection.delete(sectionId);
+		}
 	};
 
-	container.addEventListener('mouseenter', onActivate);
-	container.addEventListener('focusin', onActivate);
+	container.addEventListener('mouseenter', onMouseEnter);
+	container.addEventListener('focusin', onFocusIn);
+	container.addEventListener('focusout', onFocusOut);
+	container.addEventListener('pointerdown', onPointerDownInside);
 	document.addEventListener('pointerdown', deactivateOnOutsidePointerDown, true);
 	document.addEventListener('keydown', keyHandler);
 	bindingsBySection.set(sectionId, cleanupListeners);
 
-	// Remount: section still owns keyboard → re-apply chrome without requiring re-hover.
+	// Remount: section still owns keyboard → re-apply chrome; restore DOM focus if nothing else focused.
 	if (activeSectionId === sectionId) {
 		options.onOwnershipChange?.(true);
+		const active = document.activeElement;
+		const focusLost =
+			!(active instanceof Node) ||
+			active === document.body ||
+			!document.contains(active);
+		if (focusLost) {
+			focusPanel(container);
+		}
 	} else {
 		options.onOwnershipChange?.(false);
 	}
