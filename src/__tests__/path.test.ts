@@ -7,6 +7,7 @@ import {
 } from '../core/path';
 import { MillerNode } from '../core/types';
 import { buildColumns } from '../session/build-columns';
+import { normalizeNavKey } from '../ui/keyboard';
 
 function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
 	return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
@@ -67,5 +68,30 @@ describe('session/build-columns', () => {
 		expect(cols).toHaveLength(2);
 		expect(cols[0]!.items[0]!.isActive).toBe(true);
 		expect(cols[1]!.items[0]!.node.text).toBe('Child');
+	});
+});
+
+describe('normalizeNavKey (arrows + vim)', () => {
+	it('maps hjkl to arrows', () => {
+		expect(normalizeNavKey('h')).toBe('ArrowLeft');
+		expect(normalizeNavKey('j')).toBe('ArrowDown');
+		expect(normalizeNavKey('k')).toBe('ArrowUp');
+		expect(normalizeNavKey('l')).toBe('ArrowRight');
+	});
+
+	it('maps arrows to themselves', () => {
+		expect(normalizeNavKey('ArrowLeft')).toBe('ArrowLeft');
+		expect(normalizeNavKey('ArrowDown')).toBe('ArrowDown');
+		expect(normalizeNavKey('ArrowUp')).toBe('ArrowUp');
+		expect(normalizeNavKey('ArrowRight')).toBe('ArrowRight');
+	});
+
+	it('is case-insensitive for letters', () => {
+		expect(normalizeNavKey('J')).toBe('ArrowDown');
+	});
+
+	it('returns null for unrelated keys', () => {
+		expect(normalizeNavKey('x')).toBeNull();
+		expect(normalizeNavKey('Enter')).toBeNull();
 	});
 });

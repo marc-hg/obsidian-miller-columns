@@ -37,10 +37,34 @@ export function resetKeyboardFocusForTests(): void {
 	activeSectionId = null;
 }
 
-const NAV_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' ', 'Enter']);
+export type NavKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
+
+/**
+ * Map arrow keys and vim hjkl onto a single navigation vocabulary.
+ * Case-insensitive for single letters (Caps Lock).
+ */
+export function normalizeNavKey(key: string): NavKey | null {
+	const k = key.length === 1 ? key.toLowerCase() : key;
+	switch (k) {
+		case 'ArrowUp':
+		case 'k':
+			return 'ArrowUp';
+		case 'ArrowDown':
+		case 'j':
+			return 'ArrowDown';
+		case 'ArrowLeft':
+		case 'h':
+			return 'ArrowLeft';
+		case 'ArrowRight':
+		case 'l':
+			return 'ArrowRight';
+		default:
+			return null;
+	}
+}
 
 export type KeyboardHandlers = {
-	onNavigate: (key: string) => void;
+	onNavigate: (key: NavKey) => void;
 	onToggleFocused: () => void;
 	onInsert: (isChild: boolean) => void;
 };
@@ -48,14 +72,13 @@ export type KeyboardHandlers = {
 /**
  * Level 3: focus ownership + key → intent.
  * Mouseleave does not deactivate. Outside pointerdown does.
- * Rebind / remount keeps focus if this sectionId was already active.
+ * Supports arrow keys and vim hjkl (same motions).
  */
 export function bindKeyboard(
 	container: HTMLElement,
 	handlers: KeyboardHandlers,
 	sectionId: number
 ): void {
-	// Drop previous listeners for this section (same container rebind OR Obsidian remount).
 	const previous = bindingsBySection.get(sectionId);
 	if (previous) previous();
 
@@ -72,31 +95,40 @@ export function bindKeyboard(
 
 	const keyHandler = (e: KeyboardEvent): void => {
 		if (!container.isConnected) {
-			// DOM remounted or note closed — drop dead listeners only.
-			// Keep activeSectionId so a remount of the same section stays live.
 			cleanupListeners();
 			return;
 		}
 
 		if (activeSectionId !== sectionId) return;
 
-		const { key } = e;
-		if (!NAV_KEYS.has(key)) return;
+		// Don't steal browser / Obsidian chord shortcuts.
+		if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-		e.preventDefault();
-		e.stopPropagation();
+		const { key } = e;
 
 		if (key === 'Enter') {
+			e.preventDefault();
+			e.stopPropagation();
 			handlers.onInsert(e.shiftKey);
 			return;
 		}
 
 		if (key === ' ') {
+			e.preventDefault();
+			e.stopPropagation();
 			handlers.onToggleFocused();
 			return;
 		}
 
-		handlers.onNavigate(key);
+		// Shift+h/j/k/l left alone (not vim motions we implement).
+		if (e.shiftKey && key.length === 1) return;
+
+		const navKey = normalizeNavKey(key);
+		if (!navKey) return;
+
+		e.preventDefault();
+		e.stopPropagation();
+		handlers.onNavigate(navKey);
 	};
 
 	const cleanupListeners = (): void => {

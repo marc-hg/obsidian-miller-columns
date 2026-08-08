@@ -80,6 +80,7 @@ export function renderMillerUI(
 				if (focused) onToggle(focused);
 			},
 			onNavigate: (key) => {
+				// key is already normalized (arrows or vim hjkl → Arrow*).
 				const seeded = seedPathIfEmpty(rootNodes, activePath);
 				activePath = seeded.path;
 				if (activePath.length === 0) return;

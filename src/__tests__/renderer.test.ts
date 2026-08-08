@@ -224,6 +224,107 @@ describe('keyboard navigation — →/← column depth', () => {
     });
 });
 
+describe('keyboard navigation — vim hjkl mirrors arrows', () => {
+    function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
+        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+    }
+
+    function hover(container: HTMLElement): void {
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+    }
+
+    function key(k: string): void {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+    }
+
+    function activeText(container: HTMLElement): string | null {
+        return container.querySelector('.miller-item.is-active span')?.textContent ?? null;
+    }
+
+    it('j moves down like ArrowDown', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, noop, noop);
+
+        hover(container);
+        key('j');
+
+        expect(activeText(container)).toBe('B');
+        document.body.removeChild(container);
+    });
+
+    it('k moves up like ArrowUp', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [2], noop, noop, noop);
+
+        hover(container);
+        key('k');
+
+        expect(activeText(container)).toBe('A');
+        document.body.removeChild(container);
+    });
+
+    it('l descends like ArrowRight', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const child = makeNode('Child', [], 2);
+        const parent = makeNode('Parent', [child], 1);
+        renderMillerUI(container, [parent], [1], noop, noop, noop);
+
+        hover(container);
+        key('l');
+
+        const activeItems = container.querySelectorAll('.miller-item.is-active');
+        expect(activeItems[activeItems.length - 1]?.querySelector('span')?.textContent).toBe('Child');
+        document.body.removeChild(container);
+    });
+
+    it('h ascends like ArrowLeft', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const child = makeNode('Child', [], 2);
+        const parent = makeNode('Parent', [child], 1);
+        renderMillerUI(container, [parent], [1, 2], noop, noop, noop);
+
+        hover(container);
+        key('h');
+
+        expect(activeText(container)).toBe('Parent');
+        document.body.removeChild(container);
+    });
+
+    it('H (caps) behaves like h', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const child = makeNode('Child', [], 2);
+        const parent = makeNode('Parent', [child], 1);
+        renderMillerUI(container, [parent], [1, 2], noop, noop, noop);
+
+        hover(container);
+        key('H');
+
+        expect(activeText(container)).toBe('Parent');
+        document.body.removeChild(container);
+    });
+
+    it('ctrl+j is ignored (does not steal chords)', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const onPathChange = vi.fn();
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, onPathChange, noop);
+
+        hover(container);
+        document.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'j', ctrlKey: true, bubbles: true, cancelable: true })
+        );
+
+        expect(onPathChange).not.toHaveBeenCalled();
+        expect(activeText(container)).toBe('A');
+        document.body.removeChild(container);
+    });
+});
+
 describe('keyboard navigation — ↑/↓ within column', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
         return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
