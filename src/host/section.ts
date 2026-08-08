@@ -1,5 +1,10 @@
 import { App } from 'obsidian';
-import { convertItemKindInText, insertItem, toggleCheckboxInText } from '../core/mutate';
+import {
+	convertItemKindInText,
+	deleteLinesInText,
+	insertItem,
+	toggleCheckboxInText,
+} from '../core/mutate';
 import { parseListToTree } from '../core/parse';
 import { ItemKind, MillerNode } from '../core/types';
 import { PathStore } from '../session/path-store';
@@ -40,7 +45,8 @@ export class MillerSection {
 			// Keyboard focus is keyed by section lineStart so Obsidian remounts
 			// (new container after vault.modify) keep navigation without re-hover.
 			this.sectionStart,
-			(node) => this.handleConvertKind(node)
+			(node) => this.handleConvertKind(node),
+			(node, endLine, nextPath) => this.handleDelete(node, endLine, nextPath)
 		);
 	}
 
@@ -78,6 +84,25 @@ export class MillerSection {
 			onUpdated: (newText) => this.render(newText),
 		}).catch((error: unknown) => {
 			console.error('Miller Columns: failed to convert item kind', error);
+		});
+	}
+
+	private handleDelete(node: MillerNode, endLine: number, nextPath: number[]): void {
+		const startLine = node.originalLine;
+		void applyMutation(this.app, {
+			mutate: (text) => {
+				const { text: next, removed } = deleteLinesInText(text, startLine, endLine);
+				this.lineEnd = Math.max(this.sectionStart - 1, this.lineEnd - removed);
+				return next;
+			},
+			// Edit mode: range replace so Ctrl/Cmd+Z undoes the delete.
+			preferLineDelete: { startLine, endLine },
+			onUpdated: (newText) => {
+				this.pathStore.set(this.sectionStart, nextPath);
+				this.render(newText);
+			},
+		}).catch((error: unknown) => {
+			console.error('Miller Columns: failed to delete item', error);
 		});
 	}
 }

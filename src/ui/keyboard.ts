@@ -126,6 +126,8 @@ export type KeyboardHandlers = {
 	onInsert: (isChild: boolean) => void;
 	/** Alt/Ctrl+Enter → flip focused row task ↔ plain. */
 	onConvertKind: () => void;
+	/** x or Ctrl/Cmd+Backspace → delete focused row (+ subtree). */
+	onDelete: () => void;
 };
 
 export type BindKeyboardOptions = {
@@ -279,6 +281,32 @@ export function bindKeyboard(
 				return;
 			}
 			handlers.onInsert(e.shiftKey);
+			return;
+		}
+
+		// Delete: vim `x`, Delete key, or Ctrl/Cmd+Backspace (before generic mod bail-out).
+		if ((key === 'x' || key === 'X') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+			handledKeys.add(e);
+			e.preventDefault();
+			e.stopPropagation();
+			handlers.onDelete();
+			return;
+		}
+
+		if (key === 'Delete' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+			handledKeys.add(e);
+			e.preventDefault();
+			e.stopPropagation();
+			handlers.onDelete();
+			return;
+		}
+
+		if (key === 'Backspace' && (e.ctrlKey || e.metaKey)) {
+			handledKeys.add(e);
+			e.preventDefault();
+			e.stopPropagation();
+			if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+			handlers.onDelete();
 			return;
 		}
 

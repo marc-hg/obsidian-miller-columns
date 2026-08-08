@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { convertItemKindInText, insertItem, toggleCheckboxInText } from '../core/mutate';
+import {
+	convertItemKindInText,
+	deleteLinesInText,
+	insertItem,
+	toggleCheckboxInText,
+} from '../core/mutate';
 
 describe('Markdown Mutator', () => {
 	it('should toggle an empty checkbox to [x]', () => {
@@ -49,5 +54,13 @@ describe('Markdown Mutator', () => {
 	it('converts plain to unchecked task', () => {
 		expect(convertItemKindInText('- Foo', 0)).toBe('- [ ] Foo');
 		expect(convertItemKindInText('  - Nested', 0)).toBe('  - [ ] Nested');
+	});
+
+	it('deletes an inclusive line range', () => {
+		const input = `- A\n- B\n  - B1\n- C`;
+		expect(deleteLinesInText(input, 1, 2)).toEqual({
+			text: '- A\n- C',
+			removed: 2,
+		});
 	});
 });

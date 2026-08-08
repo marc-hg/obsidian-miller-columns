@@ -161,6 +161,64 @@ describe('renderMillerUI', () => {
         document.body.removeChild(container);
     });
 
+    it('x deletes focused item via onDelete', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const a = makeNode('A', [], false, 1);
+        const b = makeNode('B', [], false, 2);
+        const onDelete = vi.fn();
+        const onPathChange = vi.fn();
+        renderMillerUI(container, [a, b], [2], noop, onPathChange, noop, 0, noop, onDelete);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        document.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true })
+        );
+
+        expect(onDelete).toHaveBeenCalledWith(b, 2, [1]);
+        expect(onPathChange).toHaveBeenCalledWith([1]);
+        document.body.removeChild(container);
+    });
+
+    it('Ctrl+Backspace deletes focused item', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const a = makeNode('A', [], false, 1);
+        const onDelete = vi.fn();
+        renderMillerUI(container, [a], [1], noop, noop, noop, 0, noop, onDelete);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        document.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'Backspace',
+                ctrlKey: true,
+                bubbles: true,
+                cancelable: true,
+            })
+        );
+
+        expect(onDelete).toHaveBeenCalledWith(a, 1, []);
+        document.body.removeChild(container);
+    });
+
+    it('Delete key deletes focused item', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const a = makeNode('A', [], false, 1);
+        const b = makeNode('B', [], false, 2);
+        const onDelete = vi.fn();
+        renderMillerUI(container, [a, b], [1], noop, noop, noop, 0, noop, onDelete);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        document.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true })
+        );
+
+        // Next sibling B was on line 2; after deleting A it becomes line 1.
+        expect(onDelete).toHaveBeenCalledWith(a, 1, [1]);
+        document.body.removeChild(container);
+    });
+
     it('Ctrl+Enter converts focused task via onConvertKind (not insert)', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);

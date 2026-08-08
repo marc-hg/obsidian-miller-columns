@@ -81,6 +81,51 @@ export function lastDescendantLine(node: MillerNode): number {
 	return last ? lastDescendantLine(last) : node.originalLine;
 }
 
+/**
+ * After deleting `deleted` (and its subtree), where should selection go?
+ * Prefer previous sibling, else next sibling (line adjusted), else parent path.
+ */
+export function computePathAfterDelete(
+	rootNodes: MillerNode[],
+	activePath: MillerNode[],
+	deleted: MillerNode
+): number[] {
+	const start = deleted.originalLine;
+	const end = lastDescendantLine(deleted);
+	const removed = end - start + 1;
+
+	const delIdx = activePath.findIndex(n => n.id === deleted.id);
+	// Deleted is not on the open path — only renumber surviving path lines.
+	if (delIdx === -1) {
+		const out: number[] = [];
+		for (const line of pathToLines(activePath)) {
+			if (line >= start && line <= end) break;
+			if (line > end) out.push(line - removed);
+			else out.push(line);
+		}
+		return out;
+	}
+
+	const parentPath = activePath.slice(0, delIdx);
+	const siblings = getSiblingsAtCursorDepth(rootNodes, parentPath);
+	const sibIdx = siblings.findIndex(n => n.id === deleted.id);
+
+	if (sibIdx > 0) {
+		const prev = siblings[sibIdx - 1];
+		if (prev) return pathToLines([...parentPath, prev]);
+	}
+
+	if (sibIdx >= 0 && sibIdx < siblings.length - 1) {
+		const next = siblings[sibIdx + 1];
+		if (next) {
+			// Next sibling sits after the deleted block → shift its line up.
+			return [...pathToLines(parentPath), next.originalLine - removed];
+		}
+	}
+
+	return pathToLines(parentPath);
+}
+
 export function pathToLines(path: MillerNode[]): number[] {
 	return path.map(n => n.originalLine);
 }

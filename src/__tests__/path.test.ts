@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	computeDefaultActivePath,
 	computeInsertPlacement,
+	computePathAfterDelete,
 	navigateSibling,
 	restorePath,
 } from '../core/path';
@@ -50,6 +51,18 @@ describe('core/path', () => {
 
 	it('computeInsertPlacement null for child with empty path', () => {
 		expect(computeInsertPlacement([makeNode('A', [], 1)], [], true)).toBeNull();
+	});
+
+	it('computePathAfterDelete prefers previous sibling', () => {
+		const a = makeNode('A', [], 1);
+		const b = makeNode('B', [], 2);
+		expect(computePathAfterDelete([a, b], [b], b)).toEqual([1]);
+	});
+
+	it('computePathAfterDelete falls back to parent when last child', () => {
+		const child = makeNode('Child', [], 2);
+		const parent = makeNode('Parent', [child], 1);
+		expect(computePathAfterDelete([parent], [parent, child], child)).toEqual([1]);
 	});
 });
 

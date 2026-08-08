@@ -1,5 +1,7 @@
 import {
 	computeInsertPlacement,
+	computePathAfterDelete,
+	lastDescendantLine,
 	navigateAscend,
 	navigateDescend,
 	navigateSibling,
@@ -38,7 +40,8 @@ export function renderMillerUI(
 	onPathChange: (path: number[]) => void,
 	onInsert: (text: string, afterLine: number, indent: string, kind: ItemKind) => void,
 	sectionId = 0,
-	onConvertKind?: (node: MillerNode) => void
+	onConvertKind?: (node: MillerNode) => void,
+	onDelete?: (node: MillerNode, endLine: number, nextPath: number[]) => void
 ): void {
 	// Keep wrapper element identity for remounts that reuse the same container.
 	// Only clear children via paint; class list is managed here.
@@ -115,6 +118,24 @@ export function renderMillerUI(
 					claimKeyboard();
 					onConvertKind?.(focused);
 				}
+			},
+			onDelete: () => {
+				const seeded = seedPathIfEmpty(rootNodes, activePath);
+				activePath = seeded.path;
+				if (activePath.length === 0) return;
+				if (seeded.seeded) {
+					commitPath(activePath);
+					render({ scrollActiveIntoView: true });
+				}
+				const focused = activePath[activePath.length - 1];
+				if (!focused || !onDelete) return;
+
+				const endLine = lastDescendantLine(focused);
+				const nextPath = computePathAfterDelete(rootNodes, activePath, focused);
+				claimKeyboard();
+				// Host mutates file + path store; nextPath already uses post-delete line numbers.
+				onPathChange(nextPath);
+				onDelete(focused, endLine, nextPath);
 			},
 			onToggleFocused: () => {
 				const seeded = seedPathIfEmpty(rootNodes, activePath);

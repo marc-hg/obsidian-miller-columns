@@ -86,3 +86,28 @@ export function convertItemKindInText(fullText: string, targetLine: number): str
 
 	return fullText;
 }
+
+/**
+ * Remove inclusive line range [startLine, endLine] from the file.
+ * Used to delete a list item and its descendant lines.
+ */
+export function deleteLinesInText(
+	fullText: string,
+	startLine: number,
+	endLine: number
+): { text: string; removed: number } {
+	const lines = fullText.split('\n');
+	if (
+		startLine < 0 ||
+		endLine >= lines.length ||
+		startLine > endLine ||
+		!Number.isFinite(startLine) ||
+		!Number.isFinite(endLine)
+	) {
+		return { text: fullText, removed: 0 };
+	}
+
+	const removed = endLine - startLine + 1;
+	lines.splice(startLine, removed);
+	return { text: lines.join('\n'), removed };
+}
