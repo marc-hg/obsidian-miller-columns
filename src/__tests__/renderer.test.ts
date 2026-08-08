@@ -92,6 +92,59 @@ describe('renderMillerUI', () => {
         expect(items[1]?.classList.contains('has-children')).toBe(false);
         expect(items[1]?.querySelector('.miller-item-chevron')).toBeNull();
     });
+
+    it('auto-path shows muted selection without keyboard ownership chrome', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const child = makeNode('Child', [], false, 2);
+        const parent = makeNode('Parent', [child], false, 1);
+        renderMillerUI(container, [parent], [1], noop, noop, noop);
+
+        expect(container.classList.contains('is-keyboard-active')).toBe(false);
+        expect(container.querySelector('.miller-item.is-active')).not.toBeNull();
+
+        document.body.removeChild(container);
+    });
+
+    it('hover claims keyboard and adds is-keyboard-active; outside click releases', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], false, 1)], [1], noop, noop, noop);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(container.classList.contains('is-keyboard-active')).toBe(true);
+
+        document.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+        expect(container.classList.contains('is-keyboard-active')).toBe(false);
+
+        document.body.removeChild(container);
+    });
+
+    it('sibling navigation reuses DOM nodes (no full rebuild flicker path)', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(
+            container,
+            [makeNode('A', [], false, 1), makeNode('B', [], false, 2)],
+            [1],
+            noop,
+            noop,
+            noop
+        );
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        const before = container.querySelector('.miller-item');
+        expect(before).not.toBeNull();
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+
+        const after = container.querySelectorAll('.miller-item')[1];
+        // Same list items still in the DOM; structure patch only toggles is-active.
+        expect(container.querySelectorAll('.miller-item')[0]).toBe(before);
+        expect(after?.classList.contains('is-active')).toBe(true);
+
+        document.body.removeChild(container);
+    });
 });
 
 describe('computeDefaultActivePath', () => {

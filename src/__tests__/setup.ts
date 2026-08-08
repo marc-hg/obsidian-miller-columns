@@ -48,6 +48,10 @@ proto.addClass = function (this: HTMLElement, cls: string): void {
     this.classList.add(cls);
 };
 
+proto.removeClass = function (this: HTMLElement, cls: string): void {
+    this.classList.remove(cls);
+};
+
 proto.onClickEvent = function (this: HTMLElement, callback: (e: MouseEvent) => void): void {
     this.addEventListener('click', callback as EventListener);
 };

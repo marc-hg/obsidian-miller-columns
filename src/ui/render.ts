@@ -9,14 +9,22 @@ import {
 } from '../core/path';
 import { MillerNode } from '../core/types';
 import { openInsertInput } from './insert-input';
-import { activateKeyboard, bindKeyboard } from './keyboard';
+import {
+	activateKeyboard,
+	bindKeyboard,
+	isKeyboardActiveForSection,
+} from './keyboard';
 import { paintTree } from './paint';
 
 /**
  * Level 2–3 orchestrator: wires path state, paint, keyboard, and insert UI.
  *
+ * Visual model:
+ * - Path may be auto-expanded (muted `.is-active`) before keyboard ownership.
+ * - Ownership → `.is-keyboard-active` on the wrapper (panel ring + live accent).
+ * - Path-only navigation patches classes; full paint when column structure changes.
+ *
  * @param sectionId Stable id for keyboard focus (use section lineStart from the host).
- *   Survives Obsidian remounting the post-processor DOM under a new container.
  */
 export function renderMillerUI(
 	container: HTMLElement,
@@ -27,30 +35,44 @@ export function renderMillerUI(
 	onInsert: (text: string, afterLine: number, indent: string) => void,
 	sectionId = 0
 ): void {
-	container.empty();
-	container.addClass('miller-columns-wrapper');
+	// Keep wrapper element identity for remounts that reuse the same container.
+	// Only clear children via paint; class list is managed here.
+	if (!container.classList.contains('miller-columns-wrapper')) {
+		container.empty();
+		container.addClass('miller-columns-wrapper');
+	}
 
 	let activePath: MillerNode[] = restorePath(rootNodes, savedActivePath);
 
-	const commitPath = (path: MillerNode[]): void => {
-		activePath = path;
-		onPathChange(pathToLines(path));
+	const syncOwnershipChrome = (owned: boolean): void => {
+		container.classList.toggle('is-keyboard-active', owned);
 	};
 
 	const claimKeyboard = (): void => {
 		activateKeyboard(sectionId);
 	};
 
-	const render = (): void => {
-		paintTree(container, rootNodes, activePath, {
-			onToggle,
-			onActivateKeyboard: claimKeyboard,
-			onSelect: (node, depth) => {
-				const next = activePath.slice(0, depth);
-				next.push(node);
-				commitPath(next);
-				render();
-			},
+	const commitPath = (path: MillerNode[]): void => {
+		activePath = path;
+		onPathChange(pathToLines(path));
+	};
+
+	const handlers = {
+		onToggle,
+		onActivateKeyboard: claimKeyboard,
+		onSelect: (node: MillerNode, depth: number) => {
+			const next = activePath.slice(0, depth);
+			next.push(node);
+			commitPath(next);
+			render({ scrollActiveIntoView: isKeyboardActiveForSection(sectionId) });
+		},
+	};
+
+	const render = (options: { forceFullPaint?: boolean; scrollActiveIntoView?: boolean } = {}): void => {
+		paintTree(container, rootNodes, activePath, handlers, {
+			forceFullPaint: options.forceFullPaint,
+			scrollActiveIntoView:
+				options.scrollActiveIntoView ?? isKeyboardActiveForSection(sectionId),
 		});
 	};
 
@@ -58,7 +80,8 @@ export function renderMillerUI(
 		const placement = computeInsertPlacement(rootNodes, activePath, isChild);
 		if (!placement) return;
 
-		render();
+		// Structure may gain an empty column for the input — full paint.
+		render({ forceFullPaint: true, scrollActiveIntoView: false });
 		openInsertInput(container, placement, (result) => {
 			const parentLines = isChild
 				? pathToLines(activePath)
@@ -76,11 +99,15 @@ export function renderMillerUI(
 				const seeded = seedPathIfEmpty(rootNodes, activePath);
 				activePath = seeded.path;
 				if (activePath.length === 0) return;
+				// Seed-only: show selection without tearing down if structure same.
+				if (seeded.seeded) {
+					commitPath(activePath);
+					render({ scrollActiveIntoView: true });
+				}
 				const focused = activePath[activePath.length - 1];
 				if (focused) onToggle(focused);
 			},
 			onNavigate: (key) => {
-				// key is already normalized (arrows or vim hjkl → Arrow*).
 				const seeded = seedPathIfEmpty(rootNodes, activePath);
 				activePath = seeded.path;
 				if (activePath.length === 0) return;
@@ -104,13 +131,20 @@ export function renderMillerUI(
 				if (sameLines) return;
 
 				commitPath(newPath);
-				render();
+				// Path change: patch when structure unchanged (j/k), rebuild when columns change (h/l).
+				render({ scrollActiveIntoView: true });
 			},
 		},
-		sectionId
+		sectionId,
+		{ onOwnershipChange: syncOwnershipChrome }
 	);
 
-	render();
+	// Initial paint: show muted path; do not scroll unless already owned (remount).
+	render({
+		forceFullPaint: true,
+		scrollActiveIntoView: isKeyboardActiveForSection(sectionId),
+	});
+	syncOwnershipChrome(isKeyboardActiveForSection(sectionId));
 }
 
 export { computeDefaultActivePath } from '../core/path';

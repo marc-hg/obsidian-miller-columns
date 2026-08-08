@@ -9,6 +9,9 @@ let activeSectionId: number | null = null;
 /** One binding per section so remounts replace listeners instead of stacking them. */
 const bindingsBySection = new Map<number, () => void>();
 
+/** Chrome / UI listeners notified when ownership for a section changes. */
+const ownershipListeners = new Map<number, (owned: boolean) => void>();
+
 export function isKeyboardActiveForSection(sectionId: number): boolean {
 	return activeSectionId === sectionId;
 }
@@ -19,13 +22,21 @@ export function getActiveKeyboardSectionId(): number | null {
 }
 
 export function activateKeyboard(sectionId: number): void {
+	if (activeSectionId === sectionId) return;
+
+	const previous = activeSectionId;
 	activeSectionId = sectionId;
+
+	if (previous !== null) {
+		ownershipListeners.get(previous)?.(false);
+	}
+	ownershipListeners.get(sectionId)?.(true);
 }
 
 export function deactivateKeyboard(sectionId: number): void {
-	if (activeSectionId === sectionId) {
-		activeSectionId = null;
-	}
+	if (activeSectionId !== sectionId) return;
+	activeSectionId = null;
+	ownershipListeners.get(sectionId)?.(false);
 }
 
 /** Reset module state between tests. */
@@ -34,6 +45,7 @@ export function resetKeyboardFocusForTests(): void {
 		cleanup();
 	}
 	bindingsBySection.clear();
+	ownershipListeners.clear();
 	activeSectionId = null;
 }
 
@@ -69,6 +81,11 @@ export type KeyboardHandlers = {
 	onInsert: (isChild: boolean) => void;
 };
 
+export type BindKeyboardOptions = {
+	/** Fired when this section gains or loses keyboard ownership (for panel chrome). */
+	onOwnershipChange?: (owned: boolean) => void;
+};
+
 /**
  * Level 3: focus ownership + key → intent.
  * Mouseleave does not deactivate. Outside pointerdown does.
@@ -77,10 +94,17 @@ export type KeyboardHandlers = {
 export function bindKeyboard(
 	container: HTMLElement,
 	handlers: KeyboardHandlers,
-	sectionId: number
+	sectionId: number,
+	options: BindKeyboardOptions = {}
 ): void {
 	const previous = bindingsBySection.get(sectionId);
 	if (previous) previous();
+
+	if (options.onOwnershipChange) {
+		ownershipListeners.set(sectionId, options.onOwnershipChange);
+	} else {
+		ownershipListeners.delete(sectionId);
+	}
 
 	const onActivate = (): void => {
 		activateKeyboard(sectionId);
@@ -139,6 +163,8 @@ export function bindKeyboard(
 		if (bindingsBySection.get(sectionId) === cleanupListeners) {
 			bindingsBySection.delete(sectionId);
 		}
+		// Keep ownership listener if a remount rebinds the same section immediately after.
+		// Only drop it when this cleanup is still the registered binding cleanup.
 	};
 
 	container.addEventListener('mouseenter', onActivate);
@@ -146,4 +172,11 @@ export function bindKeyboard(
 	document.addEventListener('pointerdown', deactivateOnOutsidePointerDown, true);
 	document.addEventListener('keydown', keyHandler);
 	bindingsBySection.set(sectionId, cleanupListeners);
+
+	// Remount: section still owns keyboard → re-apply chrome without requiring re-hover.
+	if (activeSectionId === sectionId) {
+		options.onOwnershipChange?.(true);
+	} else {
+		options.onOwnershipChange?.(false);
+	}
 }
