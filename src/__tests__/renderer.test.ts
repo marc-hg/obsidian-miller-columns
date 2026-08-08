@@ -79,6 +79,19 @@ describe('renderMillerUI', () => {
 
         expect(onPathChange).toHaveBeenCalledWith([5]);
     });
+
+    it('shows chevron only on nodes that have children', () => {
+        const container = document.createElement('div');
+        const leaf = makeNode('Leaf', [], false, 2);
+        const parent = makeNode('Parent', [leaf], false, 1);
+        renderMillerUI(container, [parent, makeNode('AlsoLeaf', [], false, 3)], [], noop, noop, noop);
+
+        const items = container.querySelectorAll('.miller-item');
+        expect(items[0]?.classList.contains('has-children')).toBe(true);
+        expect(items[0]?.querySelector('.miller-item-chevron')?.textContent).toBe('›');
+        expect(items[1]?.classList.contains('has-children')).toBe(false);
+        expect(items[1]?.querySelector('.miller-item-chevron')).toBeNull();
+    });
 });
 
 describe('computeDefaultActivePath', () => {

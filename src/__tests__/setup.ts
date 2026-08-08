@@ -36,8 +36,9 @@ proto.createEl = function (this: HTMLElement, tag: string, opts?: any): HTMLElem
     return el;
 };
 
-proto.createSpan = function (this: HTMLElement, opts?: { text?: string }): HTMLSpanElement {
+proto.createSpan = function (this: HTMLElement, opts?: { text?: string; cls?: string }): HTMLSpanElement {
     const el = document.createElement('span');
+    if (opts?.cls) el.className = opts.cls;
     if (opts?.text) el.textContent = opts.text;
     this.appendChild(el);
     return el;

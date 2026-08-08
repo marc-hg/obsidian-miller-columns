@@ -48,6 +48,30 @@ If your plugin does not need CSS, delete this file.
     background-color: var(--background-modifier-hover);
 }
 
+.miller-item-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Miller-style affordance: this row opens a child column */
+.miller-item-chevron {
+    flex-shrink: 0;
+    margin-left: auto;
+    opacity: 0.45;
+    font-size: 1.1em;
+    line-height: 1;
+    font-weight: 600;
+    color: var(--text-muted);
+    user-select: none;
+}
+
+.miller-item:hover .miller-item-chevron {
+    opacity: 0.7;
+}
+
 /* Selected task state */
 .miller-item.is-active {
     background-color: var(--interactive-accent);
@@ -58,4 +82,9 @@ If your plugin does not need CSS, delete this file.
 /* Fix checkbox color when row is active */
 .miller-item.is-active input[type="checkbox"] {
     border-color: var(--text-on-accent);
+}
+
+.miller-item.is-active .miller-item-chevron {
+    color: var(--text-on-accent);
+    opacity: 0.9;
 }

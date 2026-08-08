@@ -31,7 +31,16 @@ export function paintColumns(
 				handlers.onToggle(node);
 			});
 
-			itemEl.createSpan({ text: node.text });
+			// First span stays the label — tests read `.miller-item span` as the title.
+			const label = itemEl.createSpan({ text: node.text });
+			label.addClass('miller-item-label');
+
+			if (node.children.length > 0) {
+				itemEl.addClass('has-children');
+				const chevron = itemEl.createSpan({ text: '›' });
+				chevron.addClass('miller-item-chevron');
+				chevron.setAttribute('aria-hidden', 'true');
+			}
 
 			if (isActive) {
 				itemEl.addClass('is-active');
