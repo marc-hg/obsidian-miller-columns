@@ -1,4 +1,4 @@
-import { MillerNode } from './types';
+import { ItemKind, MillerNode } from './types';
 
 /** Default auto-expand depth so ~3 columns show on first load. */
 export const DEFAULT_EXPAND_DEPTH = 2;
@@ -118,11 +118,14 @@ export type InsertPlacement = {
 	afterLine: number;
 	indent: string;
 	targetDepth: number;
+	/** New item kind: inherit focused row; no focus → task (back-compat). */
+	kind: ItemKind;
 };
 
 /**
- * Where to insert a new checklist item relative to the focused path.
+ * Where to insert a new list item relative to the focused path.
  * Returns null when the insert is not allowed (e.g. Shift+Enter with no focus).
+ * Kind inherits the focused item; with no focus defaults to task.
  */
 export function computeInsertPlacement(
 	rootNodes: MillerNode[],
@@ -138,6 +141,7 @@ export function computeInsertPlacement(
 			afterLine: lastDescendantLine(lastRoot),
 			indent: '',
 			targetDepth: 0,
+			kind: 'task',
 		};
 	}
 
@@ -146,6 +150,7 @@ export function computeInsertPlacement(
 			afterLine: focused.originalLine,
 			indent: LIST_INDENT.repeat(activePath.length),
 			targetDepth: activePath.length,
+			kind: focused.kind,
 		};
 	}
 
@@ -153,5 +158,6 @@ export function computeInsertPlacement(
 		afterLine: lastDescendantLine(focused),
 		indent: LIST_INDENT.repeat(activePath.length - 1),
 		targetDepth: activePath.length - 1,
+		kind: focused.kind,
 	};
 }

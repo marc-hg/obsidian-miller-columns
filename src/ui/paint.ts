@@ -74,16 +74,26 @@ function paintColumnsFull(
 			const { node, isActive } = item;
 			const itemEl = colEl.createDiv({ cls: 'miller-item' });
 			itemEl.setAttribute('data-line', String(node.originalLine));
+			itemEl.setAttribute('data-kind', node.kind);
 
-			const checkbox = itemEl.createEl('input', { type: 'checkbox' });
-			checkbox.checked = node.isCompleted;
-			checkbox.addEventListener('click', (e) => {
-				e.stopPropagation();
-				handlers.onActivateKeyboard?.();
-				handlers.onToggle(node);
-			});
+			// Fixed gutter: checkbox for tasks, bullet for plain (markdown-like).
+			const gutter = itemEl.createDiv({ cls: 'miller-item-gutter' });
+			if (node.kind === 'task') {
+				const checkbox = gutter.createEl('input', { type: 'checkbox' });
+				checkbox.checked = node.isCompleted;
+				checkbox.addEventListener('click', (e) => {
+					e.stopPropagation();
+					handlers.onActivateKeyboard?.();
+					handlers.onToggle(node);
+				});
+			} else {
+				itemEl.addClass('is-plain');
+				const bullet = gutter.createSpan({ text: '•' });
+				bullet.addClass('miller-item-bullet');
+				bullet.setAttribute('aria-hidden', 'true');
+			}
 
-			// First span stays the label — tests read `.miller-item span` as the title.
+			// First label span — tests often read `.miller-item span` / `.miller-item-label`.
 			const label = itemEl.createSpan({ text: node.text });
 			label.addClass('miller-item-label');
 

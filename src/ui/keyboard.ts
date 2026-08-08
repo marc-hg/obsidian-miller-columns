@@ -122,7 +122,10 @@ export function normalizeNavKey(key: string): NavKey | null {
 export type KeyboardHandlers = {
 	onNavigate: (key: NavKey) => void;
 	onToggleFocused: () => void;
+	/** Enter / Shift+Enter → insert same kind as focus (sibling / child). */
 	onInsert: (isChild: boolean) => void;
+	/** Alt/Ctrl+Enter → flip focused row task ↔ plain. */
+	onConvertKind: () => void;
 };
 
 export type BindKeyboardOptions = {
@@ -182,17 +185,17 @@ export function bindKeyboard(
 
 	const onFocusOut = (event: FocusEvent): void => {
 		const next = event.relatedTarget;
-		if (next instanceof Node && container.contains(next)) return;
+		// Only release when focus moves to a concrete node *outside* the panel
+		// (e.g. Tab away). relatedTarget === null is common when the insert input
+		// is removed after confirm — that must NOT drop ownership.
+		if (!(next instanceof Node)) return;
+		if (container.contains(next)) return;
 
-		// Defer: focus may land on another child in the same tick (e.g. checkbox).
 		requestAnimationFrame(() => {
 			if (!container.isConnected) return;
 			if (activeSectionId !== sectionId) return;
 			const active = document.activeElement;
 			if (active instanceof Node && container.contains(active)) return;
-			// Soft release: keep ownership if pointer is still over the panel (hover sticky),
-			// but drop if focus truly left and pointer is elsewhere.
-			// For Tab-away, pointer is usually outside → release.
 			deactivateKeyboard(sectionId, { blur: false });
 		});
 	};
@@ -218,7 +221,37 @@ export function bindKeyboard(
 		deactivateKeyboard(sectionId, { blur: true });
 	};
 
+	const isTypingInField = (target: EventTarget | null): boolean => {
+		if (!(target instanceof HTMLElement)) return false;
+		if (!container.contains(target)) return false;
+		const tag = target.tagName;
+		return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+	};
+
+	const isEnterKey = (e: KeyboardEvent): boolean =>
+		e.code === 'Enter' ||
+		e.code === 'NumpadEnter' ||
+		e.key === 'Enter' ||
+		e.key === 'NumpadEnter' ||
+		e.keyCode === 13;
+
+	/** Prefer Control on macOS — pure ⌥+Enter is often swallowed by the OS/app. */
+	const wantsConvertKind = (e: KeyboardEvent): boolean => {
+		if (e.ctrlKey || e.altKey) return true;
+		try {
+			if (e.getModifierState?.('Alt') || e.getModifierState?.('AltGraph')) return true;
+		} catch {
+			/* ignore */
+		}
+		return false;
+	};
+
+	// Dedupe when the same event hits both window and container capture listeners.
+	const handledKeys = new WeakSet<KeyboardEvent>();
+
 	const keyHandler = (e: KeyboardEvent): void => {
+		if (handledKeys.has(e)) return;
+
 		if (!container.isConnected) {
 			cleanupListeners();
 			return;
@@ -226,27 +259,42 @@ export function bindKeyboard(
 
 		if (activeSectionId !== sectionId) return;
 
-		// Don't steal browser / Obsidian chord shortcuts.
-		if (e.ctrlKey || e.metaKey || e.altKey) return;
+		// Let the inline insert field (and any future inputs) handle their own keys.
+		if (isTypingInField(e.target)) return;
 
 		const { key } = e;
 
+		// Enter family (Cmd+Enter left for Obsidian):
+		// - Enter / Shift+Enter → insert same kind (sibling / child)
+		// - Alt|Ctrl+Enter → convert focused item task ↔ plain
+		if (isEnterKey(e)) {
+			if (e.metaKey) return;
+			handledKeys.add(e);
+			e.preventDefault();
+			e.stopPropagation();
+			if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+
+			if (wantsConvertKind(e)) {
+				handlers.onConvertKind();
+				return;
+			}
+			handlers.onInsert(e.shiftKey);
+			return;
+		}
+
+		// Don't steal other browser / Obsidian chord shortcuts.
+		if (e.ctrlKey || e.metaKey || e.altKey) return;
+
 		if (key === 'Escape') {
-			// Exit widget mode — do not steal if an inner field already handled it (stopPropagation).
+			handledKeys.add(e);
 			e.preventDefault();
 			e.stopPropagation();
 			deactivateKeyboard(sectionId, { blur: true });
 			return;
 		}
 
-		if (key === 'Enter') {
-			e.preventDefault();
-			e.stopPropagation();
-			handlers.onInsert(e.shiftKey);
-			return;
-		}
-
 		if (key === ' ') {
+			handledKeys.add(e);
 			e.preventDefault();
 			e.stopPropagation();
 			handlers.onToggleFocused();
@@ -259,6 +307,7 @@ export function bindKeyboard(
 		const navKey = normalizeNavKey(key);
 		if (!navKey) return;
 
+		handledKeys.add(e);
 		e.preventDefault();
 		e.stopPropagation();
 		handlers.onNavigate(navKey);
@@ -269,8 +318,10 @@ export function bindKeyboard(
 		container.removeEventListener('focusin', onFocusIn);
 		container.removeEventListener('focusout', onFocusOut);
 		container.removeEventListener('pointerdown', onPointerDownInside);
+		container.removeEventListener('keydown', keyHandler, true);
 		document.removeEventListener('pointerdown', deactivateOnOutsidePointerDown, true);
-		document.removeEventListener('keydown', keyHandler);
+		document.removeEventListener('keydown', keyHandler, true);
+		window.removeEventListener('keydown', keyHandler, true);
 		if (bindingsBySection.get(sectionId) === cleanupListeners) {
 			bindingsBySection.delete(sectionId);
 		}
@@ -283,8 +334,11 @@ export function bindKeyboard(
 	container.addEventListener('focusin', onFocusIn);
 	container.addEventListener('focusout', onFocusOut);
 	container.addEventListener('pointerdown', onPointerDownInside);
+	// Capture on window + document + panel — pure ⌥+Enter is often eaten before bubble.
+	container.addEventListener('keydown', keyHandler, true);
 	document.addEventListener('pointerdown', deactivateOnOutsidePointerDown, true);
-	document.addEventListener('keydown', keyHandler);
+	document.addEventListener('keydown', keyHandler, true);
+	window.addEventListener('keydown', keyHandler, true);
 	bindingsBySection.set(sectionId, cleanupListeners);
 
 	// Remount: section still owns keyboard → re-apply chrome; restore DOM focus if nothing else focused.

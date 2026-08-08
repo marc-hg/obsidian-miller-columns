@@ -8,6 +8,7 @@ describe('Miller Column Parser', () => {
 
 		expect(tree.length).toBe(1);
 		expect(tree[0]!.text).toBe('Parent');
+		expect(tree[0]!.kind).toBe('task');
 		expect(tree[0]!.children.length).toBe(1);
 		expect(tree[0]!.children[0]!.text).toBe('Child');
 	});
@@ -27,5 +28,37 @@ describe('Miller Column Parser', () => {
 		expect(tree[0]!.originalLine).toBe(5);
 		expect(tree[1]!.originalLine).toBe(6);
 		expect(tree[1]!.children[0]!.originalLine).toBe(7);
+	});
+
+	it('parses plain bullets without checkboxes', () => {
+		const markdown = `- Project #miller-view\n  - Notes\n  - More`;
+		const tree = parseListToTree(markdown, 0);
+
+		expect(tree[0]!.kind).toBe('plain');
+		expect(tree[0]!.text).toBe('Project');
+		expect(tree[0]!.isCompleted).toBe(false);
+		expect(tree[0]!.children).toHaveLength(2);
+		expect(tree[0]!.children[0]!.kind).toBe('plain');
+		expect(tree[0]!.children[0]!.text).toBe('Notes');
+	});
+
+	it('parses mixed task and plain lists under one parent', () => {
+		const markdown = `- Work #miller-view\n  - [ ] Ship\n  - Design\n    - [x] Mockups`;
+		const tree = parseListToTree(markdown, 0);
+
+		expect(tree[0]!.kind).toBe('plain');
+		expect(tree[0]!.children[0]!.kind).toBe('task');
+		expect(tree[0]!.children[0]!.isCompleted).toBe(false);
+		expect(tree[0]!.children[1]!.kind).toBe('plain');
+		expect(tree[0]!.children[1]!.children[0]!.kind).toBe('task');
+		expect(tree[0]!.children[1]!.children[0]!.isCompleted).toBe(true);
+	});
+
+	it('does not treat * bullets as nodes', () => {
+		const markdown = `* Star item\n- Dash item`;
+		const tree = parseListToTree(markdown, 0);
+		expect(tree).toHaveLength(1);
+		expect(tree[0]!.text).toBe('Dash item');
+		expect(tree[0]!.kind).toBe('plain');
 	});
 });

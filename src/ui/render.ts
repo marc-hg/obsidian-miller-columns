@@ -7,7 +7,7 @@ import {
 	restorePath,
 	seedPathIfEmpty,
 } from '../core/path';
-import { MillerNode } from '../core/types';
+import { ItemKind, MillerNode } from '../core/types';
 import { openInsertInput } from './insert-input';
 import {
 	activateKeyboard,
@@ -36,8 +36,9 @@ export function renderMillerUI(
 	savedActivePath: number[],
 	onToggle: (node: MillerNode) => void,
 	onPathChange: (path: number[]) => void,
-	onInsert: (text: string, afterLine: number, indent: string) => void,
-	sectionId = 0
+	onInsert: (text: string, afterLine: number, indent: string, kind: ItemKind) => void,
+	sectionId = 0,
+	onConvertKind?: (node: MillerNode) => void
 ): void {
 	// Keep wrapper element identity for remounts that reuse the same container.
 	// Only clear children via paint; class list is managed here.
@@ -87,11 +88,13 @@ export function renderMillerUI(
 		// Structure may gain an empty column for the input — full paint.
 		render({ forceFullPaint: true, scrollActiveIntoView: false });
 		openInsertInput(container, placement, (result) => {
+			// Keep panel armed across input teardown + host rebuild (focusout used to drop us).
+			claimKeyboard();
 			const parentLines = isChild
 				? pathToLines(activePath)
 				: pathToLines(activePath.slice(0, -1));
 			onPathChange([...parentLines, result.newItemLine]);
-			onInsert(result.text, result.afterLine, result.indent);
+			onInsert(result.text, result.afterLine, result.indent, placement.kind);
 		});
 	};
 
@@ -99,6 +102,20 @@ export function renderMillerUI(
 		container,
 		{
 			onInsert: handleInsert,
+			onConvertKind: () => {
+				const seeded = seedPathIfEmpty(rootNodes, activePath);
+				activePath = seeded.path;
+				if (activePath.length === 0) return;
+				if (seeded.seeded) {
+					commitPath(activePath);
+					render({ scrollActiveIntoView: true });
+				}
+				const focused = activePath[activePath.length - 1];
+				if (focused) {
+					claimKeyboard();
+					onConvertKind?.(focused);
+				}
+			},
 			onToggleFocused: () => {
 				const seeded = seedPathIfEmpty(rootNodes, activePath);
 				activePath = seeded.path;
@@ -109,7 +126,8 @@ export function renderMillerUI(
 					render({ scrollActiveIntoView: true });
 				}
 				const focused = activePath[activePath.length - 1];
-				if (focused) onToggle(focused);
+				// Space only toggles tasks; plain items are structure-only.
+				if (focused && focused.kind === 'task') onToggle(focused);
 			},
 			onNavigate: (key) => {
 				const seeded = seedPathIfEmpty(rootNodes, activePath);

@@ -50,7 +50,7 @@ If your plugin does not need CSS, delete this file.
     border-right: none;
 }
 
-/* Individual task item */
+/* Individual list item (task or plain) */
 .miller-item {
     padding: 6px 10px;
     border-radius: 6px;
@@ -60,6 +60,37 @@ If your plugin does not need CSS, delete this file.
     gap: 8px;
     color: var(--text-normal);
     /* No background transition — rebuild/hover thrash looked like flicker */
+}
+
+/* Fixed-width gutter so plain and task labels share a column alignment */
+.miller-item-gutter {
+    flex-shrink: 0;
+    width: 1.25em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Plain list marker — matches vanilla markdown bullet look */
+.miller-item-bullet {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    line-height: 1;
+    font-size: 0.95em;
+    color: var(--text-muted);
+    user-select: none;
+    pointer-events: none;
+}
+
+.miller-columns-wrapper.is-keyboard-active .miller-item.is-active .miller-item-bullet {
+    color: var(--text-on-accent);
+    opacity: 0.9;
+}
+
+.miller-item.is-plain .miller-item-label {
+    font-weight: inherit;
 }
 
 /* Hover sugar only when panel is not keyboard-owned (avoids fight with live selection) */

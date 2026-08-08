@@ -9,8 +9,13 @@ import { MillerNode } from '../core/types';
 import { buildColumns } from '../session/build-columns';
 import { normalizeNavKey } from '../ui/keyboard';
 
-function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-	return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+function makeNode(
+	text: string,
+	children: MillerNode[] = [],
+	originalLine = 0,
+	kind: 'task' | 'plain' = 'task'
+): MillerNode {
+	return { id: crypto.randomUUID(), text, kind, isCompleted: false, originalLine, children };
 }
 
 describe('core/path', () => {
@@ -34,7 +39,13 @@ describe('core/path', () => {
 			afterLine: 5,
 			indent: '',
 			targetDepth: 0,
+			kind: 'task',
 		});
+	});
+
+	it('computeInsertPlacement inherits plain kind from focus', () => {
+		const leaf = makeNode('Leaf', [], 5, 'plain');
+		expect(computeInsertPlacement([leaf], [leaf], false)?.kind).toBe('plain');
 	});
 
 	it('computeInsertPlacement null for child with empty path', () => {

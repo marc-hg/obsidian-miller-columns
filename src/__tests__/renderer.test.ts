@@ -3,7 +3,7 @@ import { renderMillerUI, computeDefaultActivePath } from '../ui/render';
 import { MillerNode } from '../core/types';
 
 function makeNode(text: string, children: MillerNode[] = [], isCompleted = false, originalLine = 0): MillerNode {
-    return { id: crypto.randomUUID(), text, isCompleted, originalLine, children };
+    return { id: crypto.randomUUID(), text, kind: 'task', isCompleted, originalLine, children };
 }
 
 const noop = () => {};
@@ -91,6 +91,157 @@ describe('renderMillerUI', () => {
         expect(items[0]?.querySelector('.miller-item-chevron')?.textContent).toBe('›');
         expect(items[1]?.classList.contains('has-children')).toBe(false);
         expect(items[1]?.querySelector('.miller-item-chevron')).toBeNull();
+    });
+
+    it('renders checkbox only for task nodes, never for plain', () => {
+        const container = document.createElement('div');
+        const plain: MillerNode = {
+            id: crypto.randomUUID(),
+            text: 'Folder',
+            kind: 'plain',
+            isCompleted: false,
+            originalLine: 1,
+            children: [],
+        };
+        const task = makeNode('Task', [], false, 2);
+        renderMillerUI(container, [plain, task], [], noop, noop, noop);
+
+        const items = container.querySelectorAll('.miller-item');
+        expect(items[0]?.classList.contains('is-plain')).toBe(true);
+        expect(items[0]?.querySelector('input[type="checkbox"]')).toBeNull();
+        expect(items[0]?.querySelector('.miller-item-bullet')?.textContent).toBe('•');
+        expect(items[1]?.querySelector('input[type="checkbox"]')).not.toBeNull();
+        expect(items[1]?.querySelector('.miller-item-bullet')).toBeNull();
+    });
+
+    it('Space on plain focused item does not call onToggle', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const plain: MillerNode = {
+            id: crypto.randomUUID(),
+            text: 'Folder',
+            kind: 'plain',
+            isCompleted: false,
+            originalLine: 1,
+            children: [],
+        };
+        const onToggle = vi.fn();
+        renderMillerUI(container, [plain], [1], onToggle, noop, noop);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
+
+        expect(onToggle).not.toHaveBeenCalled();
+        document.body.removeChild(container);
+    });
+
+    it('insert inherits plain kind from focused plain item', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const plain: MillerNode = {
+            id: crypto.randomUUID(),
+            text: 'Folder',
+            kind: 'plain',
+            isCompleted: false,
+            originalLine: 5,
+            children: [],
+        };
+        const onInsert = vi.fn();
+        renderMillerUI(container, [plain], [5], noop, noop, onInsert);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        document.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+        );
+        const input = container.querySelector('input.miller-new-item-input') as HTMLInputElement;
+        input.value = 'new';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        expect(onInsert).toHaveBeenCalledWith('new', 5, '', 'plain');
+        document.body.removeChild(container);
+    });
+
+    it('Ctrl+Enter converts focused task via onConvertKind (not insert)', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const task = makeNode('Task', [], false, 5);
+        const onInsert = vi.fn();
+        const onConvert = vi.fn();
+        renderMillerUI(container, [task], [5], noop, noop, onInsert, 0, onConvert);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        document.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'Enter',
+                code: 'Enter',
+                ctrlKey: true,
+                bubbles: true,
+                cancelable: true,
+            })
+        );
+
+        expect(onInsert).not.toHaveBeenCalled();
+        expect(onConvert).toHaveBeenCalledWith(task);
+        expect(container.querySelector('input.miller-new-item-input')).toBeNull();
+        document.body.removeChild(container);
+    });
+
+    it('Ctrl+Shift+Enter converts focused item (does not open insert)', () => {
+        // Shift is ignored for convert — any Ctrl/Alt+Enter flips kind only.
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const task = makeNode('Task', [], false, 5);
+        const onInsert = vi.fn();
+        const onConvert = vi.fn();
+        renderMillerUI(container, [task], [5], noop, noop, onInsert, 0, onConvert);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        document.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'Enter',
+                code: 'Enter',
+                ctrlKey: true,
+                shiftKey: true,
+                bubbles: true,
+                cancelable: true,
+            })
+        );
+
+        expect(onInsert).not.toHaveBeenCalled();
+        expect(onConvert).toHaveBeenCalledWith(task);
+        document.body.removeChild(container);
+    });
+
+    it('confirming insert keeps keyboard ownership chrome', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const task = makeNode('Task', [], false, 5);
+        // Simulate host rebuild: onInsert re-mounts UI on same container with ownership still active.
+        const mount = (path: number[] = [5]) => {
+            renderMillerUI(
+                container,
+                [task],
+                path,
+                noop,
+                noop,
+                () => {
+                    mount([6]);
+                }
+            );
+        };
+        mount();
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(container.classList.contains('is-keyboard-active')).toBe(true);
+
+        document.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
+        );
+        const input = container.querySelector('input.miller-new-item-input') as HTMLInputElement;
+        input.value = 'next';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        expect(container.classList.contains('is-keyboard-active')).toBe(true);
+        document.body.removeChild(container);
     });
 
     it('auto-path shows muted selection without keyboard ownership chrome', () => {
@@ -199,7 +350,7 @@ describe('renderMillerUI', () => {
 
 describe('computeDefaultActivePath', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     it('returns empty array for empty tree', () => {
@@ -237,7 +388,7 @@ describe('computeDefaultActivePath', () => {
 
 describe('keyboard navigation — →/← column depth', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     function hover(container: HTMLElement): void {
@@ -342,7 +493,7 @@ describe('keyboard navigation — →/← column depth', () => {
 
 describe('keyboard navigation — vim hjkl mirrors arrows', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     function hover(container: HTMLElement): void {
@@ -443,7 +594,7 @@ describe('keyboard navigation — vim hjkl mirrors arrows', () => {
 
 describe('keyboard navigation — ↑/↓ within column', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     function hover(container: HTMLElement): void {
@@ -547,7 +698,7 @@ describe('keyboard navigation — ↑/↓ within column', () => {
 
 describe('active-panel keyboard navigation (Phase 1 acceptance)', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     function activeText(container: HTMLElement): string | null {
@@ -626,7 +777,7 @@ describe('active-panel keyboard navigation (Phase 1 acceptance)', () => {
 
 describe('keyboard navigation — Space toggle', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     function hover(container: HTMLElement): void {
@@ -784,7 +935,7 @@ describe('keyboard navigation — Space toggle', () => {
 
 describe('keyboard navigation — preventDefault on all intercepted keys', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     function setup(): HTMLElement {
@@ -828,7 +979,7 @@ describe('keyboard navigation — preventDefault on all intercepted keys', () =>
 
 describe('keyboard navigation — onPathChange fires on mutation', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     function hover(container: HTMLElement): void {
@@ -911,7 +1062,7 @@ describe('keyboard navigation — onPathChange fires on mutation', () => {
 
 describe('item creation — Enter/Shift+Enter inline input', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     function hover(container: HTMLElement): void {
@@ -1015,7 +1166,7 @@ describe('item creation — Enter/Shift+Enter inline input', () => {
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 
         expect(onInsert).toHaveBeenCalledOnce();
-        expect(onInsert).toHaveBeenCalledWith('new item', 5, '');
+        expect(onInsert).toHaveBeenCalledWith('new item', 5, '', 'task');
         document.body.removeChild(container);
     });
 
@@ -1079,7 +1230,7 @@ describe('item creation — Enter/Shift+Enter inline input', () => {
 
 describe('space-toggles-focused-item (Phase 2 acceptance)', () => {
     function makeNode(text: string, children: MillerNode[] = [], originalLine = 0): MillerNode {
-        return { id: crypto.randomUUID(), text, isCompleted: false, originalLine, children };
+        return { id: crypto.randomUUID(), text, kind: 'task', isCompleted: false, originalLine, children };
     }
 
     it('Space on hovered+selected item calls onToggle and prevents default', () => {

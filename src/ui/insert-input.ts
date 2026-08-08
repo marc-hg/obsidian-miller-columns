@@ -30,9 +30,13 @@ export function openInsertInput(
 	};
 
 	inputEl.addEventListener('keydown', (ev) => {
+		// Capture-phase document listeners should ignore us via target check; still stop bubble.
 		ev.stopPropagation();
-		if (ev.key === 'Enter') {
+		if (ev.key === 'Enter' || ev.code === 'Enter') {
+			ev.preventDefault();
 			const text = inputEl.value.trim();
+			// Blur before remove so focusout relatedTarget is cleaner; ownership is kept by keyboard rules.
+			inputEl.blur();
 			cleanup();
 			if (text) {
 				onConfirm({
@@ -43,6 +47,8 @@ export function openInsertInput(
 				});
 			}
 		} else if (ev.key === 'Escape') {
+			ev.preventDefault();
+			inputEl.blur();
 			cleanup();
 		}
 	});
