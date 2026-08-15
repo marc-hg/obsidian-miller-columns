@@ -32,7 +32,7 @@ If your plugin does not need CSS, delete this file.
 
 /*
  * Last column is the reading pane: take leftover width and wrap labels.
- * Prototype — parent columns stay compact names; leaves get the paragraph.
+ * Parent columns stay compact; hover / selected rows wrap in place.
  */
 .miller-column:last-child {
     flex: 1 1 280px;
@@ -41,16 +41,24 @@ If your plugin does not need CSS, delete this file.
     border-right: none;
 }
 
-.miller-column:last-child .miller-item {
+.miller-column:last-child .miller-item,
+.miller-item:hover,
+.miller-item.is-active {
     align-items: flex-start;
 }
 
 .miller-column:last-child .miller-item-gutter,
-.miller-column:last-child .miller-item-chevron {
+.miller-column:last-child .miller-item-chevron,
+.miller-item:hover .miller-item-gutter,
+.miller-item:hover .miller-item-chevron,
+.miller-item.is-active .miller-item-gutter,
+.miller-item.is-active .miller-item-chevron {
     margin-top: 0.2em;
 }
 
-.miller-column:last-child .miller-item-label {
+.miller-column:last-child .miller-item-label,
+.miller-item:hover .miller-item-label,
+.miller-item.is-active .miller-item-label {
     white-space: normal;
     overflow: visible;
     text-overflow: unset;
