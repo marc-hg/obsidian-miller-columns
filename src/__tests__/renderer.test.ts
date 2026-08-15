@@ -114,6 +114,23 @@ describe('renderMillerUI', () => {
         expect(items[1]?.querySelector('.miller-item-bullet')).toBeNull();
     });
 
+    it('renders **bold** in labels as <strong> and hides the markers', () => {
+        const container = document.createElement('div');
+        renderMillerUI(
+            container,
+            [makeNode('**Dimensions:** 10 meters wide')],
+            [],
+            noop,
+            noop,
+            noop
+        );
+
+        const label = container.querySelector('.miller-item-label');
+        expect(label?.textContent).toBe('Dimensions: 10 meters wide');
+        expect(label?.querySelector('strong')?.textContent).toBe('Dimensions:');
+        expect(label?.textContent).not.toContain('**');
+    });
+
     it('Space on plain focused item does not call onToggle', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);

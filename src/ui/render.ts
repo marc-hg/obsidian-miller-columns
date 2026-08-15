@@ -25,7 +25,7 @@ import { paintTree } from './paint';
  * - No auto-focus on open — muted path only until the user enters the panel.
  * - Enter: Tab (tabindex=0), click, or hover (hover claims keys without stealing focus).
  * - Exit: click outside, Tab away (focusout), Escape.
- * - Ownership → `.is-keyboard-active` (panel ring + live accent).
+ * - Ownership → `.is-keyboard-active` (live accent on the selected row).
  *
  * Paint:
  * - Path-only navigation patches classes; full paint when column structure changes.

@@ -16,7 +16,6 @@ Orientation and “why are my keys working?” affordances.
 
 - [ ] Path breadcrumb above the columns (e.g. `Project › Design › Wireframes`)
 - [ ] Breadcrumb segments clickable to jump up the active path
-- [ ] Visual focus ring / border on the Miller block that currently owns keyboard focus
 
 ## 3. Settings + dim/hide completed
 
@@ -27,6 +26,13 @@ Light personalization without new interaction paradigms.
 - [ ] Toggle vim `hjkl` (keep arrows always available, or document both)
 - [ ] Dim and/or hide completed items (view filter first; no forced file rewrite)
 - [ ] Optional: custom trigger tag (default `#miller-view`), show/hide chevrons
+
+## 4. Render inline markdown in labels
+
+`**bold**` is painted as `<strong>`. Other inline markdown is still raw.
+
+- [x] Render `**bold**` in item labels instead of showing raw `**` syntax
+- [ ] Keep other inline markdown as follow-up if cheap (italics, `` `code` ``) — don't block on a full markdown renderer
 
 ---
 

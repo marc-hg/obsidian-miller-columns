@@ -6,38 +6,23 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
-/* Container holding all columns */
+/* Container holding all columns — no outer frame; the active row is the chrome. */
 .miller-columns-wrapper {
     display: flex;
     overflow-x: auto;
     gap: 15px;
     padding: 10px 0;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 8px;
-    background-color: var(--background-primary);
-    /* Avoid layout thrash feeling on class toggles */
-    transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
-/* Panel owns keyboard — clear “this is live” chrome */
-.miller-columns-wrapper.is-keyboard-active {
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 1px var(--interactive-accent);
-}
-
-/* Real DOM focus (Tab) — keep ring even if theme suppresses default outlines */
 .miller-columns-wrapper:focus {
     outline: none;
 }
 
-.miller-columns-wrapper:focus-visible {
-    border-color: var(--interactive-accent);
-    box-shadow: 0 0 0 2px var(--interactive-accent);
-}
-
-/* Individual vertical column */
+/* Individual vertical column — navigator size, one-line labels */
 .miller-column {
-    min-width: 220px;
+    flex: 0 0 220px;
+    width: 220px;
+    min-width: 180px;
     border-right: 1px solid var(--background-modifier-border);
     padding: 0 10px;
     display: flex;
@@ -45,9 +30,32 @@ If your plugin does not need CSS, delete this file.
     gap: 4px;
 }
 
-/* Remove border from the last column */
+/*
+ * Last column is the reading pane: take leftover width and wrap labels.
+ * Prototype — parent columns stay compact names; leaves get the paragraph.
+ */
 .miller-column:last-child {
+    flex: 1 1 280px;
+    width: auto;
+    min-width: 240px;
     border-right: none;
+}
+
+.miller-column:last-child .miller-item {
+    align-items: flex-start;
+}
+
+.miller-column:last-child .miller-item-gutter,
+.miller-column:last-child .miller-item-chevron {
+    margin-top: 0.2em;
+}
+
+.miller-column:last-child .miller-item-label {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    overflow-wrap: break-word;
+    line-height: 1.4;
 }
 
 /* Individual list item (task or plain) */
@@ -91,6 +99,15 @@ If your plugin does not need CSS, delete this file.
 
 .miller-item.is-plain .miller-item-label {
     font-weight: inherit;
+}
+
+/* Let the theme color <strong> (often heading/accent), except on the live row. */
+.miller-item-label strong {
+    font-weight: 700;
+}
+
+.miller-columns-wrapper.is-keyboard-active .miller-item.is-active .miller-item-label strong {
+    color: inherit;
 }
 
 /* Hover sugar only when panel is not keyboard-owned (avoids fight with live selection) */

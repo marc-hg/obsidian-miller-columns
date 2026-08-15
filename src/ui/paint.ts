@@ -1,5 +1,17 @@
+import { parseInlineBold } from '../core/inline';
 import { MillerNode } from '../core/types';
 import { buildColumns, ColumnModel } from '../session/build-columns';
+
+/** Paint `**bold**` as <strong>; keep other characters as text. */
+function paintLabel(label: HTMLElement, text: string): void {
+	for (const part of parseInlineBold(text)) {
+		if (part.kind === 'bold') {
+			label.createEl('strong', { text: part.value });
+		} else {
+			label.appendChild(document.createTextNode(part.value));
+		}
+	}
+}
 
 export type PaintHandlers = {
 	onToggle: (node: MillerNode) => void;
@@ -94,8 +106,9 @@ function paintColumnsFull(
 			}
 
 			// First label span — tests often read `.miller-item span` / `.miller-item-label`.
-			const label = itemEl.createSpan({ text: node.text });
+			const label = itemEl.createSpan();
 			label.addClass('miller-item-label');
+			paintLabel(label, node.text);
 
 			if (node.children.length > 0) {
 				itemEl.addClass('has-children');
