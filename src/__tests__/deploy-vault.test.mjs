@@ -20,7 +20,7 @@ describe('deployVaultArtifacts', () => {
 		const messages = [];
 
 		await writeFile(path.join(sourceRoot, 'main.js'), 'new main');
-		await writeFile(path.join(sourceRoot, 'manifest.json'), '{"id":"obsidian-miller-columns"}');
+		await writeFile(path.join(sourceRoot, 'manifest.json'), '{"id":"miller-columns"}');
 		await writeFile(path.join(sourceRoot, 'styles.css'), '.miller-columns-wrapper {}');
 		await writeFile(path.join(targetPluginDir, 'data.json'), '{"setting":true}');
 
@@ -31,7 +31,7 @@ describe('deployVaultArtifacts', () => {
 		});
 
 		await expect(readFile(path.join(targetPluginDir, 'main.js'), 'utf8')).resolves.toBe('new main');
-		await expect(readFile(path.join(targetPluginDir, 'manifest.json'), 'utf8')).resolves.toBe('{"id":"obsidian-miller-columns"}');
+		await expect(readFile(path.join(targetPluginDir, 'manifest.json'), 'utf8')).resolves.toBe('{"id":"miller-columns"}');
 		await expect(readFile(path.join(targetPluginDir, 'styles.css'), 'utf8')).resolves.toBe('.miller-columns-wrapper {}');
 		await expect(readFile(path.join(targetPluginDir, 'data.json'), 'utf8')).resolves.toBe('{"setting":true}');
 		expect(result).toEqual({
@@ -47,7 +47,7 @@ describe('deployVaultArtifacts', () => {
 		const { sourceRoot, targetPluginDir } = await createDeployFixture();
 
 		await writeFile(path.join(sourceRoot, 'main.js'), 'new main');
-		await writeFile(path.join(sourceRoot, 'manifest.json'), '{"id":"obsidian-miller-columns"}');
+		await writeFile(path.join(sourceRoot, 'manifest.json'), '{"id":"miller-columns"}');
 
 		const result = await deployVaultArtifacts({
 			log: () => undefined,
@@ -56,7 +56,7 @@ describe('deployVaultArtifacts', () => {
 		});
 
 		await expect(readFile(path.join(targetPluginDir, 'main.js'), 'utf8')).resolves.toBe('new main');
-		await expect(readFile(path.join(targetPluginDir, 'manifest.json'), 'utf8')).resolves.toBe('{"id":"obsidian-miller-columns"}');
+		await expect(readFile(path.join(targetPluginDir, 'manifest.json'), 'utf8')).resolves.toBe('{"id":"miller-columns"}');
 		await expect(stat(path.join(targetPluginDir, 'styles.css'))).rejects.toHaveProperty('code', 'ENOENT');
 		expect(result.copiedArtifacts).toEqual(['main.js', 'manifest.json']);
 	});
@@ -65,7 +65,7 @@ describe('deployVaultArtifacts', () => {
 		const { sourceRoot, targetPluginDir } = await createDeployFixture({ createTarget: false });
 
 		await writeFile(path.join(sourceRoot, 'main.js'), 'new main');
-		await writeFile(path.join(sourceRoot, 'manifest.json'), '{"id":"obsidian-miller-columns"}');
+		await writeFile(path.join(sourceRoot, 'manifest.json'), '{"id":"miller-columns"}');
 
 		await expect(deployVaultArtifacts({
 			log: () => undefined,
@@ -101,7 +101,7 @@ async function createDeployFixture({ createTarget = true } = {}) {
 		'ObsidianVault',
 		'.obsidian',
 		'plugins',
-		'obsidian-miller-columns'
+		'miller-columns'
 	);
 
 	await mkdir(sourceRoot, { recursive: true });

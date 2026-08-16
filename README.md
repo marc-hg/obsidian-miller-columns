@@ -52,13 +52,13 @@ New items match the focused row’s kind (task or plain) and its indent (spaces 
 
 Until it is in the community plugin directory, copy these three files into:
 
-`Vault/.obsidian/plugins/obsidian-miller-columns/`
+`Vault/.obsidian/plugins/miller-columns/`
 
 - `main.js`
 - `manifest.json`
 - `styles.css`
 
-Reload Obsidian and enable **Miller Columns (Horizontal Tree)** under **Settings → Community plugins**.
+Enable **Miller Columns (Horizontal Tree)** under **Settings → Community plugins**. After a manual copy or a BRAT install, reload the app if the plugin does not appear in that list (Command palette → **Reload app without saving**). Then reopen the note or switch to reading view so `#miller-view` is processed.
 
 ## Develop
 

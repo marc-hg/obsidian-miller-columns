@@ -11,7 +11,7 @@ const VAULT_PLUGIN_PATH_PARTS = [
 	'ObsidianVault',
 	'.obsidian',
 	'plugins',
-	'obsidian-miller-columns',
+	'miller-columns',
 ];
 
 const scriptPath = fileURLToPath(import.meta.url);

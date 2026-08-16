@@ -41,7 +41,7 @@ npm run deploy:vault
 
 - Runs `npm run build` first, then copies `main.js`, `manifest.json`, and `styles.css`
   when present to
-  `~/Syncthing/ObsidianVault/.obsidian/plugins/obsidian-miller-columns`.
+  `~/Syncthing/ObsidianVault/.obsidian/plugins/miller-columns`.
 - The target plugin directory must already exist. The deploy script fails instead of creating it.
 - Only release artifacts are copied; unrelated files in the vault plugin directory, such as
   `data.json`, are preserved.
