@@ -2,6 +2,8 @@
 
 Turns a nested markdown list into Finder-style Miller columns: one column per depth, so you can walk a tree without scrolling a long outline.
 
+![Miller columns demo](docs/demo.gif)
+
 ## Use
 
 Add `#miller-view` anywhere in a `-` list (task items, plain bullets, or both). In reading view or live preview, that list becomes columns.
