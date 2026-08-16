@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Miller columns">
+  <rect width="512" height="512" rx="112" fill="#2a2422"/>
+  <!-- three columns -->
+  <g fill="#d9cfc3">
+    <!-- col 1: one selected, two muted -->
+    <rect x="64" y="88" width="112" height="72" rx="20" fill="#c23a2b"/>
+    <rect x="64" y="184" width="112" height="56" rx="16" opacity="0.35"/>
+    <rect x="64" y="264" width="112" height="56" rx="16" opacity="0.22"/>
+    <rect x="64" y="344" width="112" height="56" rx="16" opacity="0.14"/>
+    <!-- col 2 -->
+    <rect x="200" y="88" width="112" height="56" rx="16" opacity="0.28"/>
+    <rect x="200" y="168" width="112" height="72" rx="20" fill="#c23a2b"/>
+    <rect x="200" y="264" width="112" height="56" rx="16" opacity="0.22"/>
+    <rect x="200" y="344" width="112" height="56" rx="16" opacity="0.14"/>
+    <!-- col 3: reading pane, last selected -->
+    <rect x="336" y="88" width="112" height="56" rx="16" opacity="0.22"/>
+    <rect x="336" y="168" width="112" height="56" rx="16" opacity="0.18"/>
+    <rect x="336" y="248" width="112" height="72" rx="20" fill="#c23a2b"/>
+    <rect x="336" y="344" width="112" height="56" rx="16" opacity="0.12"/>
+  </g>
+</svg>
