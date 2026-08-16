@@ -22,6 +22,8 @@ Click a row to open its children in the next column. The last column grows and w
 
 Checkboxes write back to the note. There is no in-place rename yet — edit the line in source.
 
+**Settings → Miller Columns (Horizontal Tree)** has two options: vim `hjkl` (on by default; arrows always work) and show chevrons on items with children.
+
 ## Keyboard
 
 Hover the panel, click it, or Tab into it. Keys do nothing until the panel is active. Escape or a click outside releases it.

@@ -93,6 +93,17 @@ describe('renderMillerUI', () => {
         expect(items[1]?.querySelector('.miller-item-chevron')).toBeNull();
     });
 
+    it('hides chevrons when showChevrons is false', () => {
+        const container = document.createElement('div');
+        const parent = makeNode('Parent', [makeNode('Leaf', [], false, 2)], false, 1);
+        renderMillerUI(container, [parent], [], noop, noop, noop, 0, undefined, undefined, {
+            showChevrons: false,
+        });
+
+        expect(container.querySelector('.miller-item')?.classList.contains('has-children')).toBe(true);
+        expect(container.querySelector('.miller-item-chevron')).toBeNull();
+    });
+
     it('renders checkbox only for task nodes, never for plain', () => {
         const container = document.createElement('div');
         const plain: MillerNode = {

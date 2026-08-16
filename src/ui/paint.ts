@@ -24,6 +24,8 @@ export type PaintOptions = {
 	scrollActiveIntoView?: boolean;
 	/** Force a full DOM rebuild even if column structure is unchanged. */
 	forceFullPaint?: boolean;
+	/** Show › on items with children. Default true. */
+	showChevrons?: boolean;
 };
 
 const STRUCTURE_ATTR = 'data-miller-structure';
@@ -74,7 +76,8 @@ function updateActiveClasses(container: HTMLElement, columns: ColumnModel[]): vo
 function paintColumnsFull(
 	container: HTMLElement,
 	columns: ColumnModel[],
-	handlers: PaintHandlers
+	handlers: PaintHandlers,
+	showChevrons = true
 ): void {
 	container.empty();
 
@@ -112,9 +115,11 @@ function paintColumnsFull(
 
 			if (node.children.length > 0) {
 				itemEl.addClass('has-children');
-				const chevron = itemEl.createSpan({ text: '›' });
-				chevron.addClass('miller-item-chevron');
-				chevron.setAttribute('aria-hidden', 'true');
+				if (showChevrons) {
+					const chevron = itemEl.createSpan({ text: '›' });
+					chevron.addClass('miller-item-chevron');
+					chevron.setAttribute('aria-hidden', 'true');
+				}
 			}
 
 			if (isActive) {
@@ -149,7 +154,7 @@ export function paintColumns(
 	if (canPatch) {
 		updateActiveClasses(container, columns);
 	} else {
-		paintColumnsFull(container, columns, handlers);
+		paintColumnsFull(container, columns, handlers, options.showChevrons !== false);
 		container.setAttribute(STRUCTURE_ATTR, nextKey);
 	}
 

@@ -18,6 +18,11 @@ import {
 } from './keyboard';
 import { paintTree } from './paint';
 
+export type MillerViewOptions = {
+	useVimKeys?: boolean;
+	showChevrons?: boolean;
+};
+
 /**
  * Level 2–3 orchestrator: wires path state, paint, keyboard, and insert UI.
  *
@@ -41,8 +46,11 @@ export function renderMillerUI(
 	onInsert: (text: string, afterLine: number, indent: string, kind: ItemKind) => void,
 	sectionId = 0,
 	onConvertKind?: (node: MillerNode) => void,
-	onDelete?: (node: MillerNode, endLine: number, nextPath: number[]) => void
+	onDelete?: (node: MillerNode, endLine: number, nextPath: number[]) => void,
+	view: MillerViewOptions = {}
 ): void {
+	const useVimKeys = view.useVimKeys ?? true;
+	const showChevrons = view.showChevrons ?? true;
 	// Keep wrapper element identity for remounts that reuse the same container.
 	// Only clear children via paint; class list is managed here.
 	if (!container.classList.contains('miller-columns-wrapper')) {
@@ -81,6 +89,7 @@ export function renderMillerUI(
 			forceFullPaint: options.forceFullPaint,
 			scrollActiveIntoView:
 				options.scrollActiveIntoView ?? isKeyboardActiveForSection(sectionId),
+			showChevrons,
 		});
 	};
 
@@ -179,7 +188,7 @@ export function renderMillerUI(
 			},
 		},
 		sectionId,
-		{ onOwnershipChange: syncOwnershipChrome }
+		{ onOwnershipChange: syncOwnershipChrome, useVimKeys }
 	);
 
 	// Initial paint: show muted path; do not scroll unless already owned (remount).

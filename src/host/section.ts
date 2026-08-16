@@ -10,6 +10,7 @@ import { ItemKind, MillerNode } from '../core/types';
 import { PathStore } from '../session/path-store';
 import { renderMillerUI } from '../ui/render';
 import { applyMutation } from './document';
+import type { MillerSettings } from './settings';
 
 /**
  * One live #miller-view block: owns section bounds, path key, and rebuild loop.
@@ -23,7 +24,8 @@ export class MillerSection {
 		private readonly container: HTMLElement,
 		private readonly sectionStart: number,
 		lineEnd: number,
-		private readonly pathStore: PathStore
+		private readonly pathStore: PathStore,
+		private readonly settings: MillerSettings
 	) {
 		this.lineEnd = lineEnd;
 	}
@@ -46,7 +48,11 @@ export class MillerSection {
 			// (new container after vault.modify) keep navigation without re-hover.
 			this.sectionStart,
 			(node) => this.handleConvertKind(node),
-			(node, endLine, nextPath) => this.handleDelete(node, endLine, nextPath)
+			(node, endLine, nextPath) => this.handleDelete(node, endLine, nextPath),
+			{
+				useVimKeys: this.settings.useVimKeys,
+				showChevrons: this.settings.showChevrons,
+			}
 		);
 	}
 

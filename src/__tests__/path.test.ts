@@ -164,4 +164,9 @@ describe('normalizeNavKey (arrows + vim)', () => {
 		expect(normalizeNavKey('x')).toBeNull();
 		expect(normalizeNavKey('Enter')).toBeNull();
 	});
+
+	it('ignores vim letters when useVimKeys is false', () => {
+		expect(normalizeNavKey('j', false)).toBeNull();
+		expect(normalizeNavKey('ArrowDown', false)).toBe('ArrowDown');
+	});
 });

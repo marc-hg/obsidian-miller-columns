@@ -99,19 +99,18 @@ export type NavKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
  * Map arrow keys and vim hjkl onto a single navigation vocabulary.
  * Case-insensitive for single letters (Caps Lock).
  */
-export function normalizeNavKey(key: string): NavKey | null {
-	const k = key.length === 1 ? key.toLowerCase() : key;
-	switch (k) {
-		case 'ArrowUp':
+export function normalizeNavKey(key: string, useVimKeys = true): NavKey | null {
+	if (key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight') {
+		return key;
+	}
+	if (!useVimKeys || key.length !== 1) return null;
+	switch (key.toLowerCase()) {
 		case 'k':
 			return 'ArrowUp';
-		case 'ArrowDown':
 		case 'j':
 			return 'ArrowDown';
-		case 'ArrowLeft':
 		case 'h':
 			return 'ArrowLeft';
-		case 'ArrowRight':
 		case 'l':
 			return 'ArrowRight';
 		default:
@@ -133,6 +132,8 @@ export type KeyboardHandlers = {
 export type BindKeyboardOptions = {
 	/** Fired when this section gains or loses keyboard ownership (for panel chrome). */
 	onOwnershipChange?: (owned: boolean) => void;
+	/** Map h/j/k/l to arrows. Default true. */
+	useVimKeys?: boolean;
 };
 
 /**
@@ -331,7 +332,7 @@ export function bindKeyboard(
 		// Shift+h/j/k/l left alone (not vim motions we implement).
 		if (e.shiftKey && key.length === 1) return;
 
-		const navKey = normalizeNavKey(key);
+		const navKey = normalizeNavKey(key, options.useVimKeys !== false);
 		if (!navKey) return;
 
 		handledKeys.add(e);

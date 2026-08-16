@@ -21,11 +21,12 @@ Orientation and “why are my keys working?” affordances.
 
 Light personalization without new interaction paradigms.
 
-- [ ] Settings tab with a small, intentional option set
+- [x] Settings tab with a small, intentional option set
 - [ ] Default expand depth
-- [ ] Toggle vim `hjkl` (keep arrows always available, or document both)
+- [x] Toggle vim `hjkl` (keep arrows always available, or document both)
 - [ ] Dim and/or hide completed items (view filter first; no forced file rewrite)
-- [ ] Optional: custom trigger tag (default `#miller-view`), show/hide chevrons
+- [x] Show/hide chevrons
+- [ ] Optional: custom trigger tag (default `#miller-view`)
 
 ## 4. Render inline markdown in labels
 

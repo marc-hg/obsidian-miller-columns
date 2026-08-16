@@ -37,9 +37,28 @@ vi.mock('obsidian', () => {
 		registerMarkdownPostProcessor(cb: PostProcessor) {
 			this._postProcessor = cb;
 		}
+		async loadData(): Promise<unknown> {
+			return {};
+		}
+		async saveData(_data: unknown): Promise<void> {}
+		addSettingTab(_tab: unknown): void {}
 	}
 	class MarkdownView {}
-	return { Plugin, MarkdownView };
+	class PluginSettingTab {
+		constructor(_app: unknown, _plugin: unknown) {}
+	}
+	class Setting {
+		setName(): this {
+			return this;
+		}
+		setDesc(): this {
+			return this;
+		}
+		addToggle(): this {
+			return this;
+		}
+	}
+	return { Plugin, MarkdownView, PluginSettingTab, Setting };
 });
 
 import MillerColumnsPlugin from '../main';
@@ -58,7 +77,7 @@ describe('MillerColumnsPlugin integration', () => {
 	let postProcessor: PostProcessor;
 	let element: HTMLElement;
 
-	beforeEach(() => {
+	beforeEach(async () => {
 		element = document.createElement('div');
 		document.body.appendChild(element);
 
@@ -83,7 +102,7 @@ describe('MillerColumnsPlugin integration', () => {
 		} as unknown as App;
 
 		plugin = new MillerColumnsPlugin(app, {} as PluginManifest) as unknown as TestPlugin;
-		void plugin.onload();
+		await plugin.onload();
 		if (!plugin._postProcessor) {
 			throw new Error('expected post-processor to be registered');
 		}
