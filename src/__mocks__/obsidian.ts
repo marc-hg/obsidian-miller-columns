@@ -7,10 +7,12 @@ export type MockPostProcessor = (
 
 export class Plugin {
 	app: unknown;
+	manifest: { version: string };
 	_postProcessor: MockPostProcessor | undefined;
 
-	constructor(app: unknown, _manifest?: unknown) {
+	constructor(app: unknown, manifest?: { version?: string }) {
 		this.app = app;
+		this.manifest = { version: manifest?.version ?? '0.0.0' };
 	}
 
 	registerMarkdownPostProcessor(cb: MockPostProcessor): void {

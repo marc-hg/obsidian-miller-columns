@@ -31,8 +31,10 @@ vi.mock('obsidian', () => {
 	class Plugin {
 		app: unknown;
 		_postProcessor?: PostProcessor;
-		constructor(app: unknown, _manifest?: unknown) {
+		manifest = { version: '0.0.0' };
+		constructor(app: unknown, manifest?: { version?: string }) {
 			this.app = app;
+			this.manifest = { version: manifest?.version ?? '0.0.0' };
 		}
 		registerMarkdownPostProcessor(cb: PostProcessor) {
 			this._postProcessor = cb;

@@ -52,6 +52,9 @@ export class MillerSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
+		const version = this.plugin.manifest.version;
+		new Setting(containerEl).setName('Release').setDesc(version);
+
 		new Setting(containerEl)
 			.setName('Use vim keys')
 			.setDesc('Also navigate with h, j, k, and l. Arrow keys always work.')
