@@ -13,7 +13,6 @@ Ideas worth keeping in mind but **not** current priority. Promote into [TODO.md]
 - Commands: insert miller template, toggle `#miller-view` on current list, focus first miller section in note
 - Live Preview QA matrix: undo, multi-list notes, embeds/callouts, cursor after mutations
 - Render wikilinks / tags inside labels as native links
-- Mobile / narrow layout: stack columns or show only active path; or document desktop-first
 
 ## Structure & reliability
 

@@ -35,6 +35,14 @@ Light personalization without new interaction paradigms.
 - [x] Render `**bold**` in item labels instead of showing raw `**` syntax
 - [ ] Keep other inline markdown as follow-up if cheap (italics, `` `code` ``) — don't block on a full markdown renderer
 
+## 5. Phone / narrow layout
+
+`isDesktopOnly` is already `false`, but columns are a desktop-width layout.
+
+- [ ] On a phone or narrow pane, show a usable layout (stack columns, or only the active path) instead of horizontal squeeze
+- [ ] Tap to open children and go back up the path without relying on hover or a keyboard
+- [ ] Checkboxes and insert still write back on mobile
+
 ---
 
 Longer list of optional ideas: see [MAYBE.md](./MAYBE.md).

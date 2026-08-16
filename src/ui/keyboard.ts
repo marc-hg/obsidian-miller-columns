@@ -5,7 +5,10 @@
  *
  * Ownership model (Reading mode):
  * - Enter: Tab/focusin, click (pointerdown inside), or hover (mouseenter, no focus steal)
- * - Exit: outside pointerdown, focus leaving the panel, Escape
+ * - Exit: mouseleave (unless the panel has DOM focus), outside pointerdown,
+ *   focus leaving the panel, Escape
+ * - mouseleave on a disconnected node is ignored so Obsidian remounts keep
+ *   ownership when the pointer is still over the block
  * - No auto-focus on first paint
  */
 
@@ -177,8 +180,21 @@ export function bindKeyboard(
 		focusPanel(container);
 	};
 
+	const panelHasFocus = (): boolean => {
+		const active = document.activeElement;
+		return active instanceof Node && container.contains(active);
+	};
+
 	const onMouseEnter = (): void => {
 		claimWithoutFocus();
+	};
+
+	const onMouseLeave = (): void => {
+		// Remount: old node is already (or about to be) detached. Keep ownership
+		// so the replacement bind for this sectionId can keep navigating.
+		if (!container.isConnected) return;
+		if (panelHasFocus()) return;
+		deactivateKeyboard(sectionId, { blur: false });
 	};
 
 	const onFocusIn = (): void => {
@@ -343,6 +359,7 @@ export function bindKeyboard(
 
 	const cleanupListeners = (): void => {
 		container.removeEventListener('mouseenter', onMouseEnter);
+		container.removeEventListener('mouseleave', onMouseLeave);
 		container.removeEventListener('focusin', onFocusIn);
 		container.removeEventListener('focusout', onFocusOut);
 		container.removeEventListener('pointerdown', onPointerDownInside);
@@ -359,6 +376,7 @@ export function bindKeyboard(
 	};
 
 	container.addEventListener('mouseenter', onMouseEnter);
+	container.addEventListener('mouseleave', onMouseLeave);
 	container.addEventListener('focusin', onFocusIn);
 	container.addEventListener('focusout', onFocusOut);
 	container.addEventListener('pointerdown', onPointerDownInside);

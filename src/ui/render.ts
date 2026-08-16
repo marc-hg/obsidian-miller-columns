@@ -66,6 +66,12 @@ export function renderMillerUI(
 
 	const claimKeyboard = (): void => {
 		activateKeyboard(sectionId);
+		// Click/select should keep keys after mouseleave; hover-only does not.
+		try {
+			container.focus({ preventScroll: true });
+		} catch {
+			container.focus();
+		}
 	};
 
 	const commitPath = (path: MillerNode[]): void => {

@@ -817,16 +817,19 @@ describe('active-panel keyboard navigation (Phase 1 acceptance)', () => {
         document.body.removeChild(container);
     });
 
-    it('keyboard navigation keeps working after hover activation and mouseleave', () => {
+    it('hover then mouseleave releases keys so h/l work outside the panel', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);
         renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, noop, noop);
 
         container.dispatchEvent(new MouseEvent('mouseenter'));
         container.dispatchEvent(new MouseEvent('mouseleave'));
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+        const e = new KeyboardEvent('keydown', { key: 'l', bubbles: true, cancelable: true });
+        document.dispatchEvent(e);
 
-        expect(activeText(container)).toBe('B');
+        expect(e.defaultPrevented).toBe(false);
+        expect(activeText(container)).toBe('A');
+        expect(container.classList.contains('is-keyboard-active')).toBe(false);
         document.body.removeChild(container);
     });
 
@@ -958,7 +961,6 @@ describe('keyboard navigation — Space toggle', () => {
 
         mount();
         hover(container);
-        container.dispatchEvent(new MouseEvent('mouseleave'));
 
         document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
         expect(a.isCompleted).toBe(true);
@@ -1005,7 +1007,6 @@ describe('keyboard navigation — Space toggle', () => {
 
         mount(container);
         hover(container);
-        container.dispatchEvent(new MouseEvent('mouseleave'));
 
         document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
         expect(a.isCompleted).toBe(true);
