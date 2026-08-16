@@ -20,7 +20,7 @@
 		"@types/mdast": "^4.0.4",
 		"@types/node": "^25.6.2",
 		"@vitest/ui": "^4.1.6",
-		"esbuild": "0.25.5",
+		"esbuild": "0.28.2",
 		"eslint-plugin-obsidianmd": "0.1.9",
 		"globals": "14.0.0",
 		"jsdom": "^26.0.0",
@@ -31,6 +31,6 @@
 		"vitest": "^4.1.6"
 	},
 	"dependencies": {
-		"obsidian": "latest"
+		"obsidian": "1.10.3"
 	}
 }

@@ -33,7 +33,9 @@ type ObsidianDomHelpers = {
 	onClickEvent(callback: (e: MouseEvent) => void): void;
 };
 
-const proto = HTMLElement.prototype as HTMLElement & ObsidianDomHelpers;
+// Cast through unknown: Obsidian's HTMLElement.createEl signature is a
+// generic overload our jsdom stub cannot satisfy.
+const proto = HTMLElement.prototype as unknown as ObsidianDomHelpers;
 
 proto.empty = function (this: HTMLElement) {
 	this.innerHTML = '';
