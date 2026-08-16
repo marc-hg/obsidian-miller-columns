@@ -234,8 +234,7 @@ export function bindKeyboard(
 		e.code === 'Enter' ||
 		e.code === 'NumpadEnter' ||
 		e.key === 'Enter' ||
-		e.key === 'NumpadEnter' ||
-		e.keyCode === 13;
+		e.key === 'NumpadEnter';
 
 	/** Prefer Control on macOS — pure ⌥+Enter is often swallowed by the OS/app. */
 	const wantsConvertKind = (e: KeyboardEvent): boolean => {

@@ -1,209 +1,246 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
+import type { App, MarkdownPostProcessorContext, PluginManifest } from 'obsidian';
+
+type PostProcessor = (el: HTMLElement, ctx: MarkdownPostProcessorContext) => Promise<void>;
+
+type TestPlugin = {
+	onload: () => Promise<void> | void;
+	_postProcessor?: PostProcessor;
+};
+
+type MockEditor = {
+	getValue: Mock<() => string>;
+	replaceRange: Mock<(text: string, from: { line: number; ch: number }, to: { line: number; ch: number }) => void>;
+};
+
+type VaultFile = { path: string };
+
+type MockVault = {
+	read: Mock<(file: VaultFile) => Promise<string>>;
+	cachedRead: Mock<(file: VaultFile) => Promise<string>>;
+	modify: Mock<(file: VaultFile, data: string) => Promise<void>>;
+};
+
+type MockView = {
+	editor: MockEditor;
+	file: VaultFile;
+	getMode: Mock<() => string>;
+};
 
 vi.mock('obsidian', () => {
-    class Plugin {
-        app: any;
-        _postProcessor: any;
-        constructor(app: any, _manifest?: any) { this.app = app; }
-        registerMarkdownPostProcessor(cb: any) { this._postProcessor = cb; }
-    }
-    class MarkdownView {}
-    return { Plugin, MarkdownView };
+	class Plugin {
+		app: unknown;
+		_postProcessor?: PostProcessor;
+		constructor(app: unknown, _manifest?: unknown) {
+			this.app = app;
+		}
+		registerMarkdownPostProcessor(cb: PostProcessor) {
+			this._postProcessor = cb;
+		}
+	}
+	class MarkdownView {}
+	return { Plugin, MarkdownView };
 });
 
 import MillerColumnsPlugin from '../main';
 
+function sectionCtx(lineStart: number, lineEnd: number): MarkdownPostProcessorContext {
+	return {
+		getSectionInfo: () => ({ lineStart, lineEnd, text: '' }),
+	} as unknown as MarkdownPostProcessorContext;
+}
+
 describe('MillerColumnsPlugin integration', () => {
-    let plugin: any;
-    let mockEditor: any;
-    let mockVault: any;
-    let mockView: any;
-    let postProcessor: (el: HTMLElement, ctx: any) => Promise<void>;
-    let element: HTMLElement;
+	let plugin: TestPlugin;
+	let mockEditor: MockEditor;
+	let mockVault: MockVault;
+	let mockView: MockView;
+	let postProcessor: PostProcessor;
+	let element: HTMLElement;
 
-    beforeEach(() => {
-        element = document.createElement('div');
-        document.body.appendChild(element);
+	beforeEach(() => {
+		element = document.createElement('div');
+		document.body.appendChild(element);
 
-        mockEditor = {
-            getValue: vi.fn().mockReturnValue(''),
-            replaceRange: vi.fn(),
-        };
-        mockVault = {
-            read: vi.fn(),
-            cachedRead: vi.fn().mockResolvedValue(''),
-            modify: vi.fn().mockResolvedValue(undefined),
-        };
-        mockView = {
-            editor: mockEditor,
-            file: { path: 'test.md' },
-            getMode: vi.fn().mockReturnValue('source'),
-        };
+		mockEditor = {
+			getValue: vi.fn<() => string>().mockReturnValue(''),
+			replaceRange: vi.fn(),
+		};
+		mockVault = {
+			read: vi.fn<(file: VaultFile) => Promise<string>>(),
+			cachedRead: vi.fn<(file: VaultFile) => Promise<string>>().mockResolvedValue(''),
+			modify: vi.fn<(file: VaultFile, data: string) => Promise<void>>().mockResolvedValue(undefined),
+		};
+		mockView = {
+			editor: mockEditor,
+			file: { path: 'test.md' },
+			getMode: vi.fn<() => string>().mockReturnValue('source'),
+		};
 
-        plugin = new MillerColumnsPlugin({
-            workspace: { getActiveViewOfType: vi.fn().mockReturnValue(mockView) },
-            vault: mockVault,
-        } as any, {} as any);
-        plugin.onload();
-        postProcessor = plugin._postProcessor;
-    });
+		const app = {
+			workspace: { getActiveViewOfType: vi.fn().mockReturnValue(mockView) },
+			vault: mockVault,
+		} as unknown as App;
 
-    afterEach(() => {
-        document.body.removeChild(element);
-        vi.clearAllMocks();
-    });
+		plugin = new MillerColumnsPlugin(app, {} as PluginManifest) as unknown as TestPlugin;
+		void plugin.onload();
+		if (!plugin._postProcessor) {
+			throw new Error('expected post-processor to be registered');
+		}
+		postProcessor = plugin._postProcessor;
+	});
 
-    it('ignores elements without #miller-view tag', async () => {
-        element.textContent = 'Just a regular list';
-        const ctx = { getSectionInfo: vi.fn() };
-        await postProcessor(element, ctx);
-        expect(ctx.getSectionInfo).not.toHaveBeenCalled();
-    });
+	afterEach(() => {
+		document.body.removeChild(element);
+		vi.clearAllMocks();
+	});
 
-    it('renders miller columns for #miller-view block', async () => {
-        const md = '- [ ] Task A #miller-view\n- [ ] Task B';
-        mockVault.cachedRead.mockResolvedValue(md);
-        element.textContent = '#miller-view';
+	it('ignores elements without #miller-view tag', async () => {
+		element.textContent = 'Just a regular list';
+		const getSectionInfo = vi.fn();
+		const ctx = { getSectionInfo } as unknown as MarkdownPostProcessorContext;
+		await postProcessor(element, ctx);
+		expect(getSectionInfo).not.toHaveBeenCalled();
+	});
 
-        await postProcessor(element, { getSectionInfo: () => ({ lineStart: 0, lineEnd: 1 }) });
+	it('renders miller columns for #miller-view block', async () => {
+		const md = '- [ ] Task A #miller-view\n- [ ] Task B';
+		mockVault.cachedRead.mockResolvedValue(md);
+		element.textContent = '#miller-view';
 
-        expect(element.querySelector('.miller-columns-wrapper')).not.toBeNull();
-        expect(element.querySelectorAll('.miller-item').length).toBe(2);
-    });
+		await postProcessor(element, sectionCtx(0, 1));
 
-    it('edit mode: checkbox click calls editor.replaceRange with toggled line', async () => {
-        const md = '- [ ] Task A #miller-view';
-        mockVault.cachedRead.mockResolvedValue(md);
-        mockEditor.getValue.mockReturnValue(md);
-        mockView.getMode.mockReturnValue('source');
-        element.textContent = '#miller-view';
+		expect(element.querySelector('.miller-columns-wrapper')).not.toBeNull();
+		expect(element.querySelectorAll('.miller-item').length).toBe(2);
+	});
 
-        await postProcessor(element, { getSectionInfo: () => ({ lineStart: 0, lineEnd: 0 }) });
-        (element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+	it('edit mode: checkbox click calls editor.replaceRange with toggled line', async () => {
+		const md = '- [ ] Task A #miller-view';
+		mockVault.cachedRead.mockResolvedValue(md);
+		mockEditor.getValue.mockReturnValue(md);
+		mockView.getMode.mockReturnValue('source');
+		element.textContent = '#miller-view';
 
-        expect(mockEditor.replaceRange).toHaveBeenCalledWith(
-            '- [x] Task A #miller-view',
-            { line: 0, ch: 0 },
-            { line: 0, ch: md.length }
-        );
-    });
+		await postProcessor(element, sectionCtx(0, 0));
+		(element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
 
-    it('preview mode: vault.modify called with toggled content', async () => {
-        const original = '- [ ] Task A #miller-view';
-        mockVault.cachedRead.mockResolvedValue(original);
-        mockVault.read.mockResolvedValue(original);
-        mockView.getMode.mockReturnValue('preview');
-        element.textContent = '#miller-view';
+		expect(mockEditor.replaceRange).toHaveBeenCalledWith(
+			'- [x] Task A #miller-view',
+			{ line: 0, ch: 0 },
+			{ line: 0, ch: md.length }
+		);
+	});
 
-        await postProcessor(element, { getSectionInfo: () => ({ lineStart: 0, lineEnd: 0 }) });
-        (element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+	it('preview mode: vault.modify called with toggled content', async () => {
+		const original = '- [ ] Task A #miller-view';
+		mockVault.cachedRead.mockResolvedValue(original);
+		mockVault.read.mockResolvedValue(original);
+		mockView.getMode.mockReturnValue('preview');
+		element.textContent = '#miller-view';
 
-        await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalled());
+		await postProcessor(element, sectionCtx(0, 0));
+		(element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
 
-        expect(mockVault.modify).toHaveBeenCalledWith(
-            mockView.file,
-            '- [x] Task A #miller-view'
-        );
-    });
+		await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalled());
 
-    it('preview mode: UI re-renders with updated checkbox state after toggle', async () => {
-        const original = '- [ ] Task A #miller-view';
-        mockVault.cachedRead.mockResolvedValue(original);
-        mockVault.read.mockResolvedValue(original);
-        mockView.getMode.mockReturnValue('preview');
-        element.textContent = '#miller-view';
+		expect(mockVault.modify).toHaveBeenCalledWith(mockView.file, '- [x] Task A #miller-view');
+	});
 
-        await postProcessor(element, { getSectionInfo: () => ({ lineStart: 0, lineEnd: 0 }) });
+	it('preview mode: UI re-renders with updated checkbox state after toggle', async () => {
+		const original = '- [ ] Task A #miller-view';
+		mockVault.cachedRead.mockResolvedValue(original);
+		mockVault.read.mockResolvedValue(original);
+		mockView.getMode.mockReturnValue('preview');
+		element.textContent = '#miller-view';
 
-        expect((element.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
+		await postProcessor(element, sectionCtx(0, 0));
 
-        (element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+		expect((element.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(false);
 
-        await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalled());
+		(element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
 
-        // buildUI(newText) re-renders container with updated tree — checkbox must be checked
-        expect((element.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
-    });
+		await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalled());
 
-    it('preview mode: Obsidian re-render reads fresh vault content, not stale editor state', async () => {
-        const original = '- [ ] Task A #miller-view';
-        const updated = '- [x] Task A #miller-view';
+		// buildUI(newText) re-renders container with updated tree — checkbox must be checked
+		expect((element.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
+	});
 
-        // Simulate the exact production failure: cachedRead has fresh content,
-        // but editor.getValue() still returns the pre-modify stale content.
-        // If the post-processor reads editor.getValue() it will render unchecked.
-        // If it reads cachedRead it will render checked.
-        mockVault.cachedRead.mockResolvedValue(original);
-        mockVault.read.mockResolvedValue(original);
-        mockEditor.getValue.mockReturnValue(original); // stale — never updated after vault.modify
-        mockView.getMode.mockReturnValue('preview');
-        element.textContent = '#miller-view';
+	it('preview mode: Obsidian re-render reads fresh vault content, not stale editor state', async () => {
+		const original = '- [ ] Task A #miller-view';
+		const updated = '- [x] Task A #miller-view';
 
-        await postProcessor(element, { getSectionInfo: () => ({ lineStart: 0, lineEnd: 0 }) });
-        (element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+		// Simulate the exact production failure: cachedRead has fresh content,
+		// but editor.getValue() still returns the pre-modify stale content.
+		// If the post-processor reads editor.getValue() it will render unchecked.
+		// If it reads cachedRead it will render checked.
+		mockVault.cachedRead.mockResolvedValue(original);
+		mockVault.read.mockResolvedValue(original);
+		mockEditor.getValue.mockReturnValue(original); // stale — never updated after vault.modify
+		mockView.getMode.mockReturnValue('preview');
+		element.textContent = '#miller-view';
 
-        await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalled());
+		await postProcessor(element, sectionCtx(0, 0));
+		(element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
 
-        // Obsidian re-fires post-processor: cachedRead updated, editor.getValue still stale
-        mockVault.cachedRead.mockResolvedValue(updated);
-        // mockEditor.getValue stays as original (stale) — this is the bug condition
-        element.textContent = '#miller-view';
-        await postProcessor(element, { getSectionInfo: () => ({ lineStart: 0, lineEnd: 0 }) });
+		await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalled());
 
-        expect((element.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
-    });
+		// Obsidian re-fires post-processor: cachedRead updated, editor.getValue still stale
+		mockVault.cachedRead.mockResolvedValue(updated);
+		// mockEditor.getValue stays as original (stale) — this is the bug condition
+		element.textContent = '#miller-view';
+		await postProcessor(element, sectionCtx(0, 0));
 
-    it('preview mode: active path survives toggle re-render', async () => {
-        const original = '- [ ] Parent #miller-view\n  - [ ] Child';
-        mockVault.cachedRead.mockResolvedValue(original);
-        mockVault.read.mockResolvedValue(original);
-        mockView.getMode.mockReturnValue('preview');
-        element.textContent = '#miller-view';
+		expect((element.querySelector('input[type="checkbox"]') as HTMLInputElement).checked).toBe(true);
+	});
 
-        await postProcessor(element, { getSectionInfo: () => ({ lineStart: 0, lineEnd: 1 }) });
+	it('preview mode: active path survives toggle re-render', async () => {
+		const original = '- [ ] Parent #miller-view\n  - [ ] Child';
+		mockVault.cachedRead.mockResolvedValue(original);
+		mockVault.read.mockResolvedValue(original);
+		mockView.getMode.mockReturnValue('preview');
+		element.textContent = '#miller-view';
 
-        // Expand tree by clicking parent item
-        (element.querySelector('.miller-item') as HTMLElement).click();
-        expect(element.querySelectorAll('.miller-column').length).toBe(2);
+		await postProcessor(element, sectionCtx(0, 1));
 
-        // Toggle checkbox — tree must stay expanded after re-render
-        (element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+		// Expand tree by clicking parent item
+		(element.querySelector('.miller-item') as HTMLElement).click();
+		expect(element.querySelectorAll('.miller-column').length).toBe(2);
 
-        await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalled());
+		// Toggle checkbox — tree must stay expanded after re-render
+		(element.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
 
-        expect(element.querySelectorAll('.miller-column').length).toBe(2);
-    });
+		await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalled());
 
-    it('preview mode: inserted item appears after inline input confirm', async () => {
-        const original = '- [ ] Task A #miller-view';
-        const updated = '- [ ] Task A #miller-view\n- [ ] Task B';
-        mockVault.cachedRead.mockResolvedValue(original);
-        mockVault.read.mockResolvedValue(original);
-        mockView.getMode.mockReturnValue('preview');
-        element.textContent = '#miller-view';
+		expect(element.querySelectorAll('.miller-column').length).toBe(2);
+	});
 
-        await postProcessor(element, { getSectionInfo: () => ({ lineStart: 0, lineEnd: 0 }) });
+	it('preview mode: inserted item appears after inline input confirm', async () => {
+		const original = '- [ ] Task A #miller-view';
+		const updated = '- [ ] Task A #miller-view\n- [ ] Task B';
+		mockVault.cachedRead.mockResolvedValue(original);
+		mockVault.read.mockResolvedValue(original);
+		mockView.getMode.mockReturnValue('preview');
+		element.textContent = '#miller-view';
 
-        const container = element.querySelector<HTMLElement>('.miller-columns-wrapper');
-        expect(container).not.toBeNull();
-        if (!container) throw new Error('Expected Miller columns wrapper');
+		await postProcessor(element, sectionCtx(0, 0));
 
-        container.dispatchEvent(new MouseEvent('mouseenter'));
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+		const container = element.querySelector<HTMLElement>('.miller-columns-wrapper');
+		expect(container).not.toBeNull();
+		if (!container) throw new Error('Expected Miller columns wrapper');
 
-        const input = element.querySelector<HTMLInputElement>('input.miller-new-item-input');
-        expect(input).not.toBeNull();
-        if (!input) throw new Error('Expected inline input');
+		container.dispatchEvent(new MouseEvent('mouseenter'));
+		document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
 
-        input.value = 'Task B';
-        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+		const input = element.querySelector<HTMLInputElement>('input.miller-new-item-input');
+		expect(input).not.toBeNull();
+		if (!input) throw new Error('Expected inline input');
 
-        await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalledWith(mockView.file, updated));
+		input.value = 'Task B';
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
 
-        const itemTexts = Array.from(
-            element.querySelectorAll('.miller-item span'),
-            span => span.textContent
-        );
-        expect(itemTexts).toContain('Task B');
-    });
+		await vi.waitFor(() => expect(mockVault.modify).toHaveBeenCalledWith(mockView.file, updated));
+
+		const itemTexts = Array.from(element.querySelectorAll('.miller-item span'), (span) => span.textContent);
+		expect(itemTexts).toContain('Task B');
+	});
 });

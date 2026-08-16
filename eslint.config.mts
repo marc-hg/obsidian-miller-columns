@@ -13,7 +13,9 @@ export default tseslint.config(
 				projectService: {
 					allowDefaultProject: [
 						'eslint.config.js',
-						'manifest.json'
+						'eslint.config.mts',
+						'manifest.json',
+						'vitest.config.ts',
 					]
 				},
 				tsconfigRootDir: import.meta.dirname,
@@ -30,5 +32,6 @@ export default tseslint.config(
 		"version-bump.mjs",
 		"versions.json",
 		"main.js",
+		"vitest.config.ts",
 	]),
 );
