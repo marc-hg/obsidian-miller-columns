@@ -25,9 +25,12 @@ export function parseListToTree(rawMarkdown: string, startLine: number): MillerN
 		let isCompleted: boolean;
 		let text: string;
 
+		let prefix: string;
+
 		const taskMatch = line.match(TASK_RE);
 		if (taskMatch) {
-			indent = (taskMatch[1] ?? '').length;
+			prefix = taskMatch[1] ?? '';
+			indent = prefix.length;
 			kind = 'task';
 			isCompleted = (taskMatch[2] ?? '').toLowerCase() === 'x';
 			text = stripMillerTag(taskMatch[3] ?? '');
@@ -36,7 +39,8 @@ export function parseListToTree(rawMarkdown: string, startLine: number): MillerN
 			if (!plainMatch) continue;
 			// Guard: if someone writes weird `- [x]foo` without space after ], task RE may miss;
 			// PLAIN would capture it — acceptable. Task form is tried first.
-			indent = (plainMatch[1] ?? '').length;
+			prefix = plainMatch[1] ?? '';
+			indent = prefix.length;
 			kind = 'plain';
 			isCompleted = false;
 			text = stripMillerTag(plainMatch[2] ?? '');
@@ -48,6 +52,7 @@ export function parseListToTree(rawMarkdown: string, startLine: number): MillerN
 			kind,
 			isCompleted,
 			originalLine: startLine + i,
+			indent: prefix,
 			children: [],
 		};
 

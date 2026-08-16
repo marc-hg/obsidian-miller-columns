@@ -11,5 +11,7 @@ export interface MillerNode {
 	isCompleted: boolean;
 	/** Absolute line in the source file (used for mutation). */
 	originalLine: number;
+	/** Leading whitespace from the source line. Empty for roots; omitted in some tests. */
+	indent?: string;
 	children: MillerNode[];
 }

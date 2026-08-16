@@ -193,7 +193,7 @@ export function computeInsertPlacement(
 	if (isChild) {
 		return {
 			afterLine: focused.originalLine,
-			indent: LIST_INDENT.repeat(activePath.length),
+			indent: childInsertIndent(activePath, focused),
 			targetDepth: activePath.length,
 			kind: focused.kind,
 		};
@@ -201,8 +201,34 @@ export function computeInsertPlacement(
 
 	return {
 		afterLine: lastDescendantLine(focused),
-		indent: LIST_INDENT.repeat(activePath.length - 1),
+		indent: nodeIndent(focused),
 		targetDepth: activePath.length - 1,
 		kind: focused.kind,
 	};
+}
+
+function nodeIndent(node: MillerNode): string {
+	return node.indent ?? '';
+}
+
+/** One nesting unit: difference vs parent, else two spaces. */
+function indentUnit(activePath: MillerNode[]): string {
+	const focused = activePath[activePath.length - 1];
+	const parent = activePath[activePath.length - 2];
+	if (!focused || !parent) return LIST_INDENT;
+
+	const focusedPrefix = nodeIndent(focused);
+	const parentPrefix = nodeIndent(parent);
+	if (focusedPrefix.startsWith(parentPrefix)) {
+		const unit = focusedPrefix.slice(parentPrefix.length);
+		if (unit.length > 0) return unit;
+	}
+	return LIST_INDENT;
+}
+
+/** Child indent: copy first existing child, else parent prefix + one unit. */
+function childInsertIndent(activePath: MillerNode[], focused: MillerNode): string {
+	const existing = focused.children[0];
+	if (existing) return nodeIndent(existing);
+	return nodeIndent(focused) + indentUnit(activePath);
 }

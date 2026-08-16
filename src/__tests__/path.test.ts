@@ -53,6 +53,52 @@ describe('core/path', () => {
 		expect(computeInsertPlacement([makeNode('A', [], 1)], [], true)).toBeNull();
 	});
 
+	it('child insert on a 4-space leaf uses one more indent unit, not path-depth * 2', () => {
+		const leaf: MillerNode = {
+			...makeNode('Out of Bounds', [], 10),
+			indent: '    ',
+		};
+		const parent: MillerNode = {
+			...makeNode('Gameplay', [leaf], 4),
+			indent: '',
+		};
+		expect(computeInsertPlacement([parent], [parent, leaf], true)).toEqual({
+			afterLine: 10,
+			indent: '        ',
+			targetDepth: 2,
+			kind: 'task',
+		});
+	});
+
+	it('sibling insert copies the focused line prefix', () => {
+		const leaf: MillerNode = {
+			...makeNode('Out of Bounds', [], 10),
+			indent: '    ',
+		};
+		const parent: MillerNode = {
+			...makeNode('Gameplay', [leaf], 4),
+			indent: '',
+		};
+		expect(computeInsertPlacement([parent], [parent, leaf], false)).toEqual({
+			afterLine: 10,
+			indent: '    ',
+			targetDepth: 1,
+			kind: 'task',
+		});
+	});
+
+	it('child insert with existing children copies the first child prefix', () => {
+		const existing: MillerNode = {
+			...makeNode('Existing', [], 11),
+			indent: '\t\t',
+		};
+		const parent: MillerNode = {
+			...makeNode('Parent', [existing], 10),
+			indent: '\t',
+		};
+		expect(computeInsertPlacement([parent], [parent], true)?.indent).toBe('\t\t');
+	});
+
 	it('computePathAfterDelete prefers previous sibling', () => {
 		const a = makeNode('A', [], 1);
 		const b = makeNode('B', [], 2);

@@ -1226,6 +1226,31 @@ describe('item creation — Enter/Shift+Enter inline input', () => {
         document.body.removeChild(container);
     });
 
+    it('Shift+Enter on a 4-space leaf confirms with one extra indent unit', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const leaf: MillerNode = {
+            ...makeNode('Out of Bounds', [], 10),
+            indent: '    ',
+        };
+        const parent: MillerNode = {
+            ...makeNode('Gameplay', [leaf], 4),
+            indent: '',
+        };
+        const onInsert = vi.fn();
+        renderMillerUI(container, [parent], [4, 10], noop, noop, onInsert);
+
+        hover(container);
+        pressKey('Enter', true);
+
+        const input = container.querySelector('input.miller-new-item-input') as HTMLInputElement;
+        input.value = 'test';
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+        expect(onInsert).toHaveBeenCalledWith('test', 10, '        ', 'task');
+        document.body.removeChild(container);
+    });
+
     it('confirming non-empty text calls onInsert with correct afterLine and indent', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);

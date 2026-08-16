@@ -54,6 +54,15 @@ describe('Miller Column Parser', () => {
 		expect(tree[0]!.children[1]!.children[0]!.isCompleted).toBe(true);
 	});
 
+	it('keeps the raw leading whitespace on each node', () => {
+		const markdown = `- Root #miller-view\n    - Four spaces\n        - Eight spaces`;
+		const tree = parseListToTree(markdown, 0);
+
+		expect(tree[0]!.indent).toBe('');
+		expect(tree[0]!.children[0]!.indent).toBe('    ');
+		expect(tree[0]!.children[0]!.children[0]!.indent).toBe('        ');
+	});
+
 	it('does not treat * bullets as nodes', () => {
 		const markdown = `* Star item\n- Dash item`;
 		const tree = parseListToTree(markdown, 0);
