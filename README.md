@@ -75,3 +75,4 @@ npm run lint
 ## License
 
 MIT — Copyright (c) 2026 marc-hg
+ 
