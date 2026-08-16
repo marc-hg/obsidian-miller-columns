@@ -848,6 +848,30 @@ describe('active-panel keyboard navigation (Phase 1 acceptance)', () => {
         document.body.removeChild(container);
     });
 
+    it('does not steal h/l when an outside search field has focus', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMillerUI(container, [makeNode('A', [], 1), makeNode('B', [], 2)], [1], noop, noop, noop);
+
+        container.dispatchEvent(new MouseEvent('mouseenter'));
+        const search = document.createElement('input');
+        search.type = 'search';
+        document.body.appendChild(search);
+        search.focus();
+        search.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+        const e = new KeyboardEvent('keydown', { key: 'l', bubbles: true, cancelable: true });
+        search.dispatchEvent(e);
+        document.dispatchEvent(e);
+
+        expect(e.defaultPrevented).toBe(false);
+        expect(activeText(container)).toBe('A');
+        expect(container.classList.contains('is-keyboard-active')).toBe(false);
+
+        document.body.removeChild(search);
+        document.body.removeChild(container);
+    });
+
     it('outside pointer activation releases keyboard ownership', () => {
         const container = document.createElement('div');
         document.body.appendChild(container);

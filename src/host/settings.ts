@@ -36,6 +36,10 @@ export class MillerSettingTab extends PluginSettingTab {
 	getSettingDefinitions(): unknown[] {
 		return [
 			{
+				name: 'Release',
+				desc: this.plugin.manifest.version,
+			},
+			{
 				name: 'Use vim keys',
 				desc: 'Also navigate with h, j, k, and l. Arrow keys always work.',
 				control: { type: 'toggle', key: 'useVimKeys' },

@@ -85,6 +85,14 @@ function focusPanel(container: HTMLElement): void {
 	}
 }
 
+function isEditableElement(el: EventTarget | null): boolean {
+	if (!(el instanceof HTMLElement)) return false;
+	const tag = el.tagName;
+	if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+	if (el.isContentEditable) return true;
+	return Boolean(el.closest('input, textarea, select, [contenteditable="true"], .cm-editor, .cm-content'));
+}
+
 /** Reset module state between tests. */
 export function resetKeyboardFocusForTests(): void {
 	for (const cleanup of bindingsBySection.values()) {
@@ -243,8 +251,21 @@ export function bindKeyboard(
 	const isTypingInField = (target: EventTarget | null): boolean => {
 		if (!(target instanceof HTMLElement)) return false;
 		if (!container.contains(target)) return false;
-		const tag = target.tagName;
-		return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+		return isEditableElement(target);
+	};
+
+	/** Focus landed outside the panel (settings search, editor, another pane). */
+	const onDocumentFocusIn = (event: FocusEvent): void => {
+		if (activeSectionId !== sectionId) return;
+		const target = event.target;
+		if (!(target instanceof Node) || container.contains(target)) return;
+		deactivateKeyboard(sectionId, { blur: false });
+	};
+
+	/** Settings / other Obsidian windows are a different window; their clicks never hit our document. */
+	const onWindowBlur = (): void => {
+		if (activeSectionId !== sectionId) return;
+		deactivateKeyboard(sectionId, { blur: false });
 	};
 
 	const isEnterKey = (e: KeyboardEvent): boolean =>
@@ -276,6 +297,23 @@ export function bindKeyboard(
 		}
 
 		if (activeSectionId !== sectionId) return;
+
+		// Never steal keys from an outside field (settings search, CM editor, etc.).
+		const eventTarget = e.target;
+		if (
+			eventTarget instanceof Node &&
+			!container.contains(eventTarget) &&
+			isEditableElement(eventTarget)
+		) {
+			deactivateKeyboard(sectionId, { blur: false });
+			return;
+		}
+
+		const active = document.activeElement;
+		if (active instanceof Node && !container.contains(active) && isEditableElement(active)) {
+			deactivateKeyboard(sectionId, { blur: false });
+			return;
+		}
 
 		// Let the inline insert field (and any future inputs) handle their own keys.
 		if (isTypingInField(e.target)) return;
@@ -365,8 +403,10 @@ export function bindKeyboard(
 		container.removeEventListener('pointerdown', onPointerDownInside);
 		container.removeEventListener('keydown', keyHandler, true);
 		document.removeEventListener('pointerdown', deactivateOnOutsidePointerDown, true);
+		document.removeEventListener('focusin', onDocumentFocusIn, true);
 		document.removeEventListener('keydown', keyHandler, true);
 		window.removeEventListener('keydown', keyHandler, true);
+		window.removeEventListener('blur', onWindowBlur);
 		if (bindingsBySection.get(sectionId) === cleanupListeners) {
 			bindingsBySection.delete(sectionId);
 		}
@@ -383,8 +423,10 @@ export function bindKeyboard(
 	// Capture on window + document + panel — pure ⌥+Enter is often eaten before bubble.
 	container.addEventListener('keydown', keyHandler, true);
 	document.addEventListener('pointerdown', deactivateOnOutsidePointerDown, true);
+	document.addEventListener('focusin', onDocumentFocusIn, true);
 	document.addEventListener('keydown', keyHandler, true);
 	window.addEventListener('keydown', keyHandler, true);
+	window.addEventListener('blur', onWindowBlur);
 	bindingsBySection.set(sectionId, cleanupListeners);
 
 	// Remount: section still owns keyboard → re-apply chrome; restore DOM focus if nothing else focused.
