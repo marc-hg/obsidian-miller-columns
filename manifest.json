@@ -1,11 +1,10 @@
 {
 	"id": "obsidian-miller-columns",
 	"name": "Miller Columns (Horizontal Tree)",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "Convert nested markdown lists into interactive, horizontal column views for focused task management.",
 	"author": "Marcos Horno",
 	"authorUrl": "https://github.com/marc-hg",
 	"isDesktopOnly": false
 }
-
