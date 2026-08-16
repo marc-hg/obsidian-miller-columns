@@ -1,7 +1,7 @@
 {
 	"id": "miller-columns",
 	"name": "Miller Columns (Horizontal Tree)",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"minAppVersion": "0.15.0",
 	"description": "Convert nested markdown lists into interactive, horizontal column views for focused task management.",
 	"author": "Marcos Horno",
