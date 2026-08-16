@@ -1,4 +1,4 @@
-# Miller Columns for Obsidian
+# Miller Columns (Horizontal Tree)
 
 Turns a nested markdown list into Finder-style Miller columns: one column per depth, so you can walk a tree without scrolling a long outline.
 

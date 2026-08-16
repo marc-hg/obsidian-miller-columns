@@ -19,10 +19,7 @@ export function openInsertInput(
 	const cols = container.querySelectorAll<HTMLElement>('.miller-column');
 	const colEl = cols[placement.targetDepth] ?? container.createDiv({ cls: 'miller-column' });
 
-	const inputEl = document.createElement('input');
-	inputEl.type = 'text';
-	inputEl.className = 'miller-new-item-input';
-	colEl.appendChild(inputEl);
+	const inputEl = colEl.createEl('input', { type: 'text', cls: 'miller-new-item-input' });
 	inputEl.focus();
 
 	const cleanup = () => {

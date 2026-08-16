@@ -2,20 +2,23 @@
 
 export type InlinePart = { kind: 'text' | 'bold'; value: string };
 
-const BOLD_RE = /\*\*(.+?)\*\*/g;
-
 /** Split a label into plain and `**bold**` parts. Unmatched `**` stays literal. */
 export function parseInlineBold(text: string): InlinePart[] {
 	const parts: InlinePart[] = [];
+	const re = /\*\*(.+?)\*\*/g;
 	let last = 0;
+	let match: RegExpExecArray | null = re.exec(text);
 
-	for (const match of text.matchAll(BOLD_RE)) {
-		const start = match.index ?? 0;
+	while (match) {
+		const start = match.index;
+		const captured = match[1] ?? '';
+		const full = match[0];
 		if (start > last) {
 			parts.push({ kind: 'text', value: text.slice(last, start) });
 		}
-		parts.push({ kind: 'bold', value: match[1] ?? '' });
-		last = start + match[0].length;
+		parts.push({ kind: 'bold', value: captured });
+		last = start + full.length;
+		match = re.exec(text);
 	}
 
 	if (last < text.length) {

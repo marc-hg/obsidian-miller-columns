@@ -29,6 +29,25 @@ export class MillerSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	/**
+	 * Obsidian 1.13+ settings search. Older versions keep using display().
+	 * Types ship in later API defs than our pinned obsidian 1.10.3.
+	 */
+	getSettingDefinitions(): unknown[] {
+		return [
+			{
+				name: 'Use vim keys',
+				desc: 'Also navigate with h, j, k, and l. Arrow keys always work.',
+				control: { type: 'toggle', key: 'useVimKeys' },
+			},
+			{
+				name: 'Show chevrons',
+				desc: 'Show › on items that have children.',
+				control: { type: 'toggle', key: 'showChevrons' },
+			},
+		];
+	}
+
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();

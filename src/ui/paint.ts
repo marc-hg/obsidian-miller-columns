@@ -51,7 +51,7 @@ function scrollDeepestActive(container: HTMLElement): void {
  */
 function childElementsByClass(parent: Element, className: string): HTMLElement[] {
 	return Array.from(parent.children).filter(
-		(el): el is HTMLElement => el instanceof HTMLElement && el.classList.contains(className)
+		(el): el is HTMLElement => el.instanceOf(HTMLElement) && el.classList.contains(className)
 	);
 }
 

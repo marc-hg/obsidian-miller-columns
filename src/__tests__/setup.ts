@@ -6,6 +6,16 @@ beforeEach(() => {
 	resetKeyboardFocusForTests();
 });
 
+// Obsidian Node.instanceOf — drop-in for instanceof across windows.
+if (!Node.prototype.instanceOf) {
+	Object.defineProperty(Node.prototype, 'instanceOf', {
+		value(this: Node, type: new () => unknown) {
+			return this instanceof type;
+		},
+		configurable: true,
+	});
+}
+
 // jsdom doesn't implement innerText; map it to textContent for tests
 Object.defineProperty(HTMLElement.prototype, 'innerText', {
 	get(this: HTMLElement) {

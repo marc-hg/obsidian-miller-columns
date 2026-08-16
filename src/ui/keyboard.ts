@@ -194,7 +194,7 @@ export function bindKeyboard(
 		if (!(next instanceof Node)) return;
 		if (container.contains(next)) return;
 
-		requestAnimationFrame(() => {
+		window.requestAnimationFrame(() => {
 			if (!container.isConnected) return;
 			if (activeSectionId !== sectionId) return;
 			const active = document.activeElement;
