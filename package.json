@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-miller-columns",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Convert nested markdown lists into interactive, horizontal column views for focused task management.",
 	"main": "main.js",
 	"type": "module",
 	"scripts": {
@@ -14,7 +14,7 @@
 		"test:ui": "vitest --ui"
 	},
 	"keywords": [],
-	"license": "0-BSD",
+	"license": "MIT",
 	"devDependencies": {
 		"@eslint/js": "9.30.1",
 		"@types/mdast": "^4.0.4",
