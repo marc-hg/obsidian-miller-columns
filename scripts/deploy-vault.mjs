@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url';
 const REQUIRED_ARTIFACTS = ['main.js', 'manifest.json'];
 const OPTIONAL_ARTIFACTS = ['styles.css'];
 const VAULT_PLUGIN_PATH_PARTS = [
-	'Syncthing',
 	'ObsidianVault',
 	'.obsidian',
 	'plugins',
