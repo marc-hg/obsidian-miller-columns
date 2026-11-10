@@ -20,9 +20,10 @@ If your plugin does not need CSS, delete this file.
 
 /* Individual vertical column — navigator size, one-line labels */
 .miller-column {
-    flex: 0 0 220px;
-    width: 220px;
-    min-width: 180px;
+    /* --miller-column-width is set on <body> from the Column width setting. */
+    flex: 0 0 var(--miller-column-width, 220px);
+    width: var(--miller-column-width, 220px);
+    min-width: 0;
     border-right: 1px solid var(--background-modifier-border);
     padding: 0 10px;
     display: flex;
@@ -35,18 +36,48 @@ If your plugin does not need CSS, delete this file.
  * Parent columns stay compact; hover / selected rows wrap in place.
  */
 .miller-column:last-child {
-    flex: 1 1 280px;
+    flex: 1 1 max(280px, var(--miller-column-width, 220px));
     width: auto;
-    min-width: 240px;
+    min-width: max(240px, var(--miller-column-width, 220px));
     border-right: none;
 }
 
+/*
+ * Grow to fit: the view is at least as wide as the text column and grows to
+ * fit its columns, centered, up to the pane width (100cqw). Past that, it
+ * scrolls horizontally.
+ */
+.markdown-preview-view:has(.miller-columns-wrapper) {
+    container-type: inline-size;
+}
+
+.miller-columns-host {
+    display: flex;
+    justify-content: center;
+}
+
+.miller-columns-host > .miller-columns-wrapper {
+    flex: none;
+    width: max-content;
+    min-width: 100%;
+    max-width: 100cqw;
+}
+
+/* Last column sizes from its min-width, not its text, when measuring the view. */
+.miller-columns-host .miller-column:last-child {
+    contain: inline-size;
+}
+
+/* Wrap long items: every column shows full labels, not just the last one. */
+.miller-columns-wrap-labels .miller-item,
 .miller-column:last-child .miller-item,
 .miller-item:hover,
 .miller-item.is-active {
     align-items: flex-start;
 }
 
+.miller-columns-wrap-labels .miller-item-gutter,
+.miller-columns-wrap-labels .miller-item-chevron,
 .miller-column:last-child .miller-item-gutter,
 .miller-column:last-child .miller-item-chevron,
 .miller-item:hover .miller-item-gutter,
@@ -56,6 +87,7 @@ If your plugin does not need CSS, delete this file.
     margin-top: 0.2em;
 }
 
+.miller-columns-wrap-labels .miller-item-label,
 .miller-column:last-child .miller-item-label,
 .miller-item:hover .miller-item-label,
 .miller-item.is-active .miller-item-label {

@@ -26,6 +26,10 @@ export class Plugin {
 	async saveData(_data: unknown): Promise<void> {}
 
 	addSettingTab(_tab: unknown): void {}
+
+	register(_cb: () => unknown): void {}
+
+	registerEvent(_ref: unknown): void {}
 }
 
 export class MarkdownView {}
@@ -52,6 +56,9 @@ export class Setting {
 		return this;
 	}
 	addToggle(_cb: (toggle: { setValue: (v: boolean) => unknown; onChange: (cb: (v: boolean) => void) => unknown }) => void): this {
+		return this;
+	}
+	addSlider(_cb: (slider: unknown) => void): this {
 		return this;
 	}
 }

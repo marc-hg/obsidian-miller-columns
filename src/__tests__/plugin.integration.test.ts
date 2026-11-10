@@ -44,6 +44,8 @@ vi.mock('obsidian', () => {
 		}
 		async saveData(_data: unknown): Promise<void> {}
 		addSettingTab(_tab: unknown): void {}
+		register(_cb: () => unknown): void {}
+		registerEvent(_ref: unknown): void {}
 	}
 	class MarkdownView {}
 	class PluginSettingTab {
@@ -99,7 +101,7 @@ describe('MillerColumnsPlugin integration', () => {
 		};
 
 		const app = {
-			workspace: { getActiveViewOfType: vi.fn().mockReturnValue(mockView) },
+			workspace: { getActiveViewOfType: vi.fn().mockReturnValue(mockView), on: vi.fn() },
 			vault: mockVault,
 		} as unknown as App;
 

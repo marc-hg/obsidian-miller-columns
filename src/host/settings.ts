@@ -6,20 +6,52 @@ export interface MillerSettings {
 	useVimKeys: boolean;
 	/** Show › on items that have children. */
 	showChevrons: boolean;
+	/** Width of each parent column, in pixels. */
+	columnWidth: number;
+	/** Wrap long labels in every column instead of truncating with an ellipsis. */
+	wrapLabels: boolean;
 }
+
+export const COLUMN_WIDTH_MIN = 120;
+export const COLUMN_WIDTH_MAX = 600;
+export const COLUMN_WIDTH_STEP = 10;
 
 export const DEFAULT_SETTINGS: MillerSettings = {
 	useVimKeys: true,
 	showChevrons: true,
+	columnWidth: 220,
+	wrapLabels: false,
 };
+
+function clampColumnWidth(value: unknown): number {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_SETTINGS.columnWidth;
+	return Math.min(COLUMN_WIDTH_MAX, Math.max(COLUMN_WIDTH_MIN, Math.round(value)));
+}
 
 export function mergeSettings(raw: unknown): MillerSettings {
 	const data = raw && typeof raw === 'object' ? (raw as Partial<MillerSettings>) : {};
 	return {
 		useVimKeys: data.useVimKeys ?? DEFAULT_SETTINGS.useVimKeys,
 		showChevrons: data.showChevrons ?? DEFAULT_SETTINGS.showChevrons,
+		columnWidth: clampColumnWidth(data.columnWidth),
+		wrapLabels: data.wrapLabels ?? DEFAULT_SETTINGS.wrapLabels,
 	};
 }
+
+type ToggleKey = 'useVimKeys' | 'showChevrons' | 'wrapLabels';
+
+const COPY = {
+	useVimKeys: ['Use vim keys', 'Also navigate with h, j, k, and l. Arrow keys always work.'],
+	showChevrons: ['Show chevrons', 'Show › on items that have children.'],
+	columnWidth: [
+		'Column width',
+		'Width of each column, in pixels. Views grow past the text width to fit their columns, up to the full pane width.',
+	],
+	wrapLabels: [
+		'Wrap long items in all columns',
+		'The last column and the selected item always show full text. Turn on to also show full text in the other columns instead of cutting it off with “…”.',
+	],
+} as const;
 
 export class MillerSettingTab extends PluginSettingTab {
 	plugin: MillerColumnsPlugin;
@@ -30,53 +62,80 @@ export class MillerSettingTab extends PluginSettingTab {
 	}
 
 	/**
-	 * Obsidian 1.13+ settings search. Older versions keep using display().
+	 * Obsidian 1.13+ declarative settings. Older versions keep using display().
 	 * Types ship in later API defs than our pinned obsidian 1.10.3.
 	 */
 	getSettingDefinitions(): unknown[] {
 		return [
+			{ name: 'Release', desc: this.plugin.manifest.version },
+			toggleDef('useVimKeys'),
+			toggleDef('showChevrons'),
 			{
-				name: 'Release',
-				desc: this.plugin.manifest.version,
+				name: COPY.columnWidth[0],
+				desc: COPY.columnWidth[1],
+				control: {
+					type: 'slider',
+					key: 'columnWidth',
+					min: COLUMN_WIDTH_MIN,
+					max: COLUMN_WIDTH_MAX,
+					step: COLUMN_WIDTH_STEP,
+				},
 			},
-			{
-				name: 'Use vim keys',
-				desc: 'Also navigate with h, j, k, and l. Arrow keys always work.',
-				control: { type: 'toggle', key: 'useVimKeys' },
-			},
-			{
-				name: 'Show chevrons',
-				desc: 'Show › on items that have children.',
-				control: { type: 'toggle', key: 'showChevrons' },
-			},
+			toggleDef('wrapLabels'),
 		];
+	}
+
+	/**
+	 * 1.13+ write path for declarative controls. Replaces Obsidian's default
+	 * save so layout changes apply live. Mutates in place: sections hold a
+	 * reference to this settings object.
+	 */
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		const settings = this.plugin.settings as unknown as Record<string, unknown>;
+		settings[key] = value;
+		Object.assign(this.plugin.settings, mergeSettings(this.plugin.settings));
+		await this.plugin.saveSettings();
+		this.plugin.applyLayout();
 	}
 
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		const version = this.plugin.manifest.version;
-		new Setting(containerEl).setName('Release').setDesc(version);
+		new Setting(containerEl).setName('Release').setDesc(this.plugin.manifest.version);
+
+		this.addToggle(containerEl, 'useVimKeys');
+		this.addToggle(containerEl, 'showChevrons');
 
 		new Setting(containerEl)
-			.setName('Use vim keys')
-			.setDesc('Also navigate with h, j, k, and l. Arrow keys always work.')
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.useVimKeys).onChange(async (value) => {
-					this.plugin.settings.useVimKeys = value;
-					await this.plugin.saveSettings();
-				})
+			.setName(COPY.columnWidth[0])
+			.setDesc(COPY.columnWidth[1])
+			.addSlider((slider) =>
+				slider
+					.setLimits(COLUMN_WIDTH_MIN, COLUMN_WIDTH_MAX, COLUMN_WIDTH_STEP)
+					.setValue(this.plugin.settings.columnWidth)
+					.setDynamicTooltip()
+					.onChange((value) => this.setControlValue('columnWidth', value))
 			);
 
+		this.addToggle(containerEl, 'wrapLabels');
+	}
+
+	private addToggle(
+		containerEl: HTMLElement,
+		key: ToggleKey
+	): void {
 		new Setting(containerEl)
-			.setName('Show chevrons')
-			.setDesc('Show › on items that have children.')
+			.setName(COPY[key][0])
+			.setDesc(COPY[key][1])
 			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.showChevrons).onChange(async (value) => {
-					this.plugin.settings.showChevrons = value;
-					await this.plugin.saveSettings();
-				})
+				toggle
+					.setValue(this.plugin.settings[key])
+					.onChange((value) => this.setControlValue(key, value))
 			);
 	}
+}
+
+function toggleDef(key: ToggleKey) {
+	return { name: COPY[key][0], desc: COPY[key][1], control: { type: 'toggle', key } };
 }
