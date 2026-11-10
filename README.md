@@ -18,11 +18,16 @@ Add `#miller-view` anywhere in a `-` list (task items, plain bullets, or both). 
         - Renderer
 ```
 
-Click a row to open its children in the next column. The last column grows and wraps as a reading pane; parent columns stay compact. Nodes with children show a chevron.
+Click a row to open its children in the next column. The last column grows and wraps as a reading pane; parent columns use the **Column width** setting. Nodes with children show a chevron.
 
 Checkboxes write back to the note. There is no in-place rename yet — edit the line in source.
 
-**Settings → Miller Columns (Horizontal Tree)** has two options: vim `hjkl` (on by default; arrows always work) and show chevrons on items with children.
+**Settings → Miller Columns (Horizontal Tree)** has these options:
+
+- **Use vim keys:** navigate with `hjkl` too (on by default; arrows always work).
+- **Show chevrons:** mark items that have children with ›.
+- **Column width:** 120–600px (default 220). A view starts at the note's text width and grows to fit its columns, centered, up to the full pane width. Past that it scrolls sideways.
+- **Wrap long items in all columns:** the last column and the selected item always show full text. Turn this on to stop cutting off long items with "…" in the other columns too.
 
 ## Keyboard
 
